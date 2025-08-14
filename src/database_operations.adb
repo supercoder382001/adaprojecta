@@ -49,7 +49,7 @@ package body Database_Operations is
       end if;
    exception
       when ADO.SQL.SQL_Error =>
-         raise Invalid_Input with 
+         raise Invalid_Input with
            Ada.Exceptions.Exception_Message (ADO.SQL.SQL_Error'Identity);
       when E : others =>
          raise Database_Error with "Function call failed: " &
@@ -59,7 +59,7 @@ package body Database_Operations is
    procedure Clear_All_Data is
       Session : ADO.Sessions.Session := DB_Factory.Get_Session;
       Stmt    : ADO.Statements.Statement;
-      SQL     : constant String := 
+      SQL     : constant String :=
         "TRUNCATE TABLE airports, controllers, flights CASCADE;";
    begin
       Session.Create_Statement (SQL, Stmt);
@@ -80,7 +80,7 @@ package body Database_Operations is
                             New_Capacity : Positive) is
    begin
       Call_DB_Function ("SELECT update_airport(?,?,?,?)",
-                        ADO.SQL.Create_Params (Old_Name, New_Name, 
+                        ADO.SQL.Create_Params (Old_Name, New_Name,
                                               New_Location, New_Capacity));
    end Update_Airport;
 
@@ -99,9 +99,9 @@ package body Database_Operations is
       Session.Create_Query ("SELECT * FROM list_airports()", Query);
       Query.Execute;
       while not Query.Is_Empty loop
-         Item.Name := Ada.Strings.Unbounded.To_Unbounded_String 
+         Item.Name := Ada.Strings.Unbounded.To_Unbounded_String
            (Query.Get_String (1));
-         Item.Location := Ada.Strings.Unbounded.To_Unbounded_String 
+         Item.Location := Ada.Strings.Unbounded.To_Unbounded_String
            (Query.Get_String (2));
          Item.Max_Capacity := Query.Get_Integer (3);
          Result.Append (Item);
@@ -120,7 +120,7 @@ package body Database_Operations is
                                New_Experience : Natural) is
    begin
       Call_DB_Function ("SELECT update_controller(?,?,?)",
-                        ADO.SQL.Create_Params (Old_License, New_Name, 
+                        ADO.SQL.Create_Params (Old_License, New_Name,
                                               New_Experience));
    end Update_Controller;
 
@@ -139,9 +139,9 @@ package body Database_Operations is
       Session.Create_Query ("SELECT * FROM list_controllers()", Query);
       Query.Execute;
       while not Query.Is_Empty loop
-         Item.License_Number := Ada.Strings.Unbounded.To_Unbounded_String 
+         Item.License_Number := Ada.Strings.Unbounded.To_Unbounded_String
            (Query.Get_String (1));
-         Item.Name := Ada.Strings.Unbounded.To_Unbounded_String 
+         Item.Name := Ada.Strings.Unbounded.To_Unbounded_String
            (Query.Get_String (2));
          Item.Experience_Years := Query.Get_Natural (3);
          Result.Append (Item);
@@ -150,7 +150,7 @@ package body Database_Operations is
       return Result;
    end List_Controllers;
 
-   procedure Add_Flight (Identifier, Origin_Airport_Name, 
+   procedure Add_Flight (Identifier, Origin_Airport_Name,
                         Dest_Airport_Name : String) is
    begin
       Call_DB_Function ("SELECT add_flight(?,?,?)",
@@ -158,7 +158,7 @@ package body Database_Operations is
                                               Dest_Airport_Name));
    end Add_Flight;
 
-   procedure Update_Flight (Old_Identifier, New_Origin_Name, 
+   procedure Update_Flight (Old_Identifier, New_Origin_Name,
                            New_Dest_Name : String) is
    begin
       Call_DB_Function ("SELECT update_flight(?,?,?)",
@@ -181,11 +181,11 @@ package body Database_Operations is
       Session.Create_Query ("SELECT * FROM list_flights()", Query);
       Query.Execute;
       while not Query.Is_Empty loop
-         Item.Identifier := Ada.Strings.Unbounded.To_Unbounded_String 
+         Item.Identifier := Ada.Strings.Unbounded.To_Unbounded_String
            (Query.Get_String (1));
-         Item.Origin_Name := Ada.Strings.Unbounded.To_Unbounded_String 
+         Item.Origin_Name := Ada.Strings.Unbounded.To_Unbounded_String
            (Query.Get_String (2));
-         Item.Destination_Name := Ada.Strings.Unbounded.To_Unbounded_String 
+         Item.Destination_Name := Ada.Strings.Unbounded.To_Unbounded_String
            (Query.Get_String (3));
          Result.Append (Item);
          Query.Next;
