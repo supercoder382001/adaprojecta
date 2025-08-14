@@ -10,7 +10,6 @@ with Flight_Types; use Flight_Types;
 
 procedure Main is
 
-   -- Forward declarations (specs) to fix style warnings
    function Get_Input (Prompt : String) return String;
    function Get_Positive_Input (Prompt : String) return Positive;
    function Get_Natural_Input (Prompt : String) return Natural;
@@ -39,7 +38,7 @@ procedure Main is
    function Get_Input (Prompt : String) return String is
    begin
       Put (Prompt);
-      return Ada.Strings.Fixed.Trim (Source => Get_Line, 
+      return Ada.Strings.Fixed.Trim (Source => Get_Line,
                                       Side => Ada.Strings.Both);
    end Get_Input;
 
@@ -58,7 +57,7 @@ procedure Main is
       Database_Operations.Add_Airport (
          Name => Get_Input ("Name: "),
          Location => Get_Input ("Location: "),
-         Capacity => Get_Positive_Input ("Capacity: ")
+         Max_Capacity => Get_Positive_Input ("Capacity: ")
       );
       Put_Line ("SUCCESS: Airport added.");
    end Handle_Add_Airport;
@@ -126,8 +125,8 @@ procedure Main is
    begin
       Database_Operations.Add_Flight (
          Identifier => Get_Input ("Identifier: "),
-         Origin => Get_Input ("Origin Airport: "),
-         Destination => Get_Input ("Destination Airport: ")
+         Origin_Airport_Name => Get_Input ("Origin Airport: "),
+         Destination_Airport_Name => Get_Input ("Destination Airport: ")
       );
       Put_Line ("SUCCESS: Flight added.");
    end Handle_Add_Flight;
@@ -144,8 +143,8 @@ procedure Main is
    begin
       Database_Operations.Update_Flight (
          Old_Identifier => Get_Input ("Current Identifier: "),
-         New_Origin => Get_Input ("New Origin Airport: "),
-         New_Destination => Get_Input ("New Destination Airport: ")
+         New_Origin_Name => Get_Input ("New Origin Airport: "),
+         New_Destination_Name => Get_Input ("New Destination Airport: ")
       );
       Put_Line ("SUCCESS: Flight updated.");
    end Handle_Update_Flight;
@@ -195,9 +194,9 @@ procedure Main is
    begin
       New_Line;
       Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
-      Put_Line ("Airports:    [1] Add    [2] List    Update   " &
+      Put_Line ("Airports:    [1] Add    [2] List   [3] Update   " &
                 " Delete");
-      Put_Line ("Controllers: [10] Add     List    Update   " &
+      Put_Line ("Controllers: [1] Add     List    Update   " &
                 " Delete");
       Put_Line ("Flights:      Add    [A] List   [B] Update   " &
                 "[C] Delete");
@@ -258,10 +257,10 @@ begin
          when E : Database_Operations.Record_Not_Found =>
             Put_Line ("ERROR: The record to update or delete " &
                       "was not found.");
-         when E : Database_Operations.Duplicate_Record | 
+         when E : Database_Operations.Duplicate_Record |
                   Database_Operations.Invalid_Input =>
             Put_Line ("INPUT ERROR: " & Exception_Message (E));
-         when E : Database_Operations.Database_Error | 
+         when E : Database_Operations.Database_Error |
                   Sync_Operations.Sync_Error =>
             Put_Line ("SYSTEM ERROR: " & Exception_Message (E));
          when E : Constraint_Error =>
