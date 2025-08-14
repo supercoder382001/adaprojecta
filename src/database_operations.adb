@@ -5,7 +5,6 @@ with Flight_Types; use Flight_Types;
 
 package body Database_Operations is
 
-   -- In-memory storage vectors
    Airports    : Airport_Vectors.Vector;
    Controllers : Controller_Vectors.Vector;
    Flights     : Flight_Vectors.Vector;
@@ -32,7 +31,6 @@ package body Database_Operations is
                          Max_Capacity : Positive) is
       New_Airport : Airport_Record;
    begin
-      -- Check for duplicates
       for A of Airports loop
          if To_String (A.Name) = Name then
             raise Duplicate_Record with "Airport already exists: " & Name;
@@ -83,10 +81,10 @@ package body Database_Operations is
    procedure Add_Controller (License, Name : String; Experience : Natural) is
       New_Controller : Controller_Record;
    begin
-      -- Check for duplicates
       for C of Controllers loop
          if To_String (C.License_Number) = License then
-            raise Duplicate_Record with "Controller already exists: " & License;
+            raise Duplicate_Record with "Controller already exists: " &
+                                        License;
          end if;
       end loop;
 
@@ -105,7 +103,8 @@ package body Database_Operations is
                                New_Experience : Natural) is
    begin
       for I in Controllers.First_Index .. Controllers.Last_Index loop
-         if To_String (Controllers.Element (I).License_Number) = Old_License then
+         if To_String (Controllers.Element (I).License_Number) = 
+            Old_License then
             declare
                Updated : Controller_Record := Controllers.Element (I);
             begin
@@ -122,7 +121,8 @@ package body Database_Operations is
    procedure Delete_Controller (By_License : String) is
    begin
       for I in Controllers.First_Index .. Controllers.Last_Index loop
-         if To_String (Controllers.Element (I).License_Number) = By_License then
+         if To_String (Controllers.Element (I).License_Number) = 
+            By_License then
             Controllers.Delete (I);
             return;
          end if;
@@ -134,10 +134,10 @@ package body Database_Operations is
                         Dest_Airport_Name : String) is
       New_Flight : Flight_Record;
    begin
-      -- Check for duplicates
       for F of Flights loop
          if To_String (F.Identifier) = Identifier then
-            raise Duplicate_Record with "Flight already exists: " & Identifier;
+            raise Duplicate_Record with "Flight already exists: " &
+                                        Identifier;
          end if;
       end loop;
 
