@@ -1,7 +1,6 @@
 pragma Ada_2012;
 
 with Ada.Text_IO;
-with Ada.Exceptions;
 with Ada.Strings.Fixed;
 
 with Database_Operations;
@@ -200,7 +199,7 @@ procedure Main is
       Ada.Text_IO.Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
       Ada.Text_IO.Put_Line ("Airports:    [1] Add     List   " &
                             " Update    Delete");
-      Ada.Text_IO.Put_Line ("Controllers: [9] Add     List   " &
+      Ada.Text_IO.Put_Line ("Controllers: [1] Add     List   " &
                             " Update    Delete");
       Ada.Text_IO.Put_Line ("Flights:      Add    [A] List   " &
                             "[B] Update   [C] Delete");
@@ -259,14 +258,15 @@ begin
 
       exception
          when Database_Operations.Record_Not_Found =>
-            Ada.Text_IO.Put_Line ("ERROR: The record to update or delete " &
-                                  "was not found.");
+            Ada.Text_IO.Put_Line ("ERROR: The record to update or " &
+                                  "delete was not found.");
          when Database_Operations.Duplicate_Record |
               Database_Operations.Invalid_Input =>
             Ada.Text_IO.Put_Line ("INPUT ERROR: Invalid data provided.");
          when Database_Operations.Database_Error |
               Sync_Operations.Sync_Error =>
-            Ada.Text_IO.Put_Line ("SYSTEM ERROR: Database or sync operation failed.");
+            Ada.Text_IO.Put_Line ("SYSTEM ERROR: Database or sync " &
+                                  "operation failed.");
          when Constraint_Error =>
             Ada.Text_IO.Put_Line ("INPUT ERROR: Invalid number format " &
                                   "for a required numeric field.");
