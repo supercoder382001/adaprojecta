@@ -1,5 +1,4 @@
 pragma Ada_2012;
-with ADO.Sessions;
 with Flight_Types;
 
 package Database_Operations is
@@ -8,7 +7,6 @@ package Database_Operations is
 
    procedure Initialize_Database_Connection;
    procedure Shutdown_Database_Connection;
-   function Get_Session return ADO.Sessions.Session;
 
    procedure Clear_All_Data;
 
