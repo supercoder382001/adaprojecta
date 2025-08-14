@@ -103,7 +103,7 @@ package body Database_Operations is
                                New_Experience : Natural) is
    begin
       for I in Controllers.First_Index .. Controllers.Last_Index loop
-         if To_String (Controllers.Element (I).License_Number) = 
+         if To_String (Controllers.Element (I).License_Number) =
             Old_License then
             declare
                Updated : Controller_Record := Controllers.Element (I);
@@ -121,7 +121,7 @@ package body Database_Operations is
    procedure Delete_Controller (By_License : String) is
    begin
       for I in Controllers.First_Index .. Controllers.Last_Index loop
-         if To_String (Controllers.Element (I).License_Number) = 
+         if To_String (Controllers.Element (I).License_Number) =
             By_License then
             Controllers.Delete (I);
             return;
