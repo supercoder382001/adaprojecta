@@ -126,7 +126,7 @@ procedure Main is
       Database_Operations.Add_Flight (
          Identifier => Get_Input ("Identifier: "),
          Origin_Airport_Name => Get_Input ("Origin Airport: "),
-         Destination_Airport_Name => Get_Input ("Destination Airport: ")
+         Dest_Airport_Name => Get_Input ("Destination Airport: ")
       );
       Put_Line ("SUCCESS: Flight added.");
    end Handle_Add_Flight;
@@ -144,7 +144,7 @@ procedure Main is
       Database_Operations.Update_Flight (
          Old_Identifier => Get_Input ("Current Identifier: "),
          New_Origin_Name => Get_Input ("New Origin Airport: "),
-         New_Destination_Name => Get_Input ("New Destination Airport: ")
+         New_Dest_Name => Get_Input ("New Destination Airport: ")
       );
       Put_Line ("SUCCESS: Flight updated.");
    end Handle_Update_Flight;
@@ -193,14 +193,14 @@ procedure Main is
    begin
       New_Line;
       Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
-      Put_Line ("Airports:    [1] Add     List    Update   " &
-                " Delete");
-      Put_Line ("Controllers: [1] Add     List    Update   " &
-                " Delete");
-      Put_Line ("Flights:      Add    [A] List   [B] Update   " &
-                "[C] Delete");
-      Put_Line ("System:      [S] Stats  [X] Backup [E] Export   " &
-                "[Q] Quit");
+      Put_Line ("Airports:    [1] Add    [2] List   " &
+                " Update    Delete");
+      Put_Line ("Controllers: [1] Add     List   " &
+                " Update    Delete");
+      Put_Line ("Flights:      Add    [A] List   " &
+                "[B] Update   [C] Delete");
+      Put_Line ("System:      [S] Stats  [X] Backup " &
+                "[E] Export   [Q] Quit");
       Put ("Enter choice: ");
    end Show_Menu;
 
