@@ -45,13 +45,13 @@ package body Sync_Operations is
       end To_Json;
 
       Root_Object       : JSON_Object_Access := Create_Object;
-      Airports_Array    : JSON_Array_Access  := Create_Array;
-      Controllers_Array : JSON_Array_Access  := Create_Array;
-      Flights_Array     : JSON_Array_Access  := Create_Array;
+      Airports_Array    : JSON_Array_Access := Create_Array;
+      Controllers_Array : JSON_Array_Access := Create_Array;
+      Flights_Array     : JSON_Array_Access := Create_Array;
 
       Data_Path       : constant String := "data/exports/";
       Timestamp       : constant String := Time_Of (Now)'Image;
-      Clean_Timestamp : String          := Timestamp;
+      Clean_Timestamp : String := Timestamp;
       Filename        : Unbounded_String;
 
    begin
@@ -81,11 +81,11 @@ package body Sync_Operations is
          Ada.Directories.Create_Path (Data_Path);
       end if;
 
-      Filename := To_Unbounded_String (Data_Path & "export-" & 
+      Filename := To_Unbounded_String (Data_Path & "export-" &
                                        Clean_Timestamp & ".json");
       JSON.IO.Write (Root_Object.all, To_String (Filename));
 
-      Ada.Text_IO.Put_Line ("SUCCESS: Data exported to " & 
+      Ada.Text_IO.Put_Line ("SUCCESS: Data exported to " &
                             To_String (Filename));
 
    exception
