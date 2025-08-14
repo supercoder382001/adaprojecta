@@ -4,45 +4,55 @@ with Ada.Text_IO;
 with Ada.Directories;
 with Ada.Calendar.Formatting;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
-with Ada.Strings.Fixed;
 
 with Database_Operations; use Database_Operations;
 with Flight_Types; use Flight_Types;
 
 package body Sync_Operations is
 
+   -- Forward declarations for local functions
+   function To_JSON_String (A : Airport_Record) return String;
+   function To_JSON_String (C : Controller_Record) return String;
+   function To_JSON_String (F : Flight_Record) return String;
+
+   function To_JSON_String (A : Airport_Record) return String is
+   begin
+      return "    {" & ASCII.LF &
+             "      ""name"": """ & To_String (A.Name) & """," & ASCII.LF &
+             "      ""location"": """ & To_String (A.Location) & 
+             """," & ASCII.LF &
+             "      ""max_capacity"": " & A.Max_Capacity'Image & ASCII.LF &
+             "    }";
+   end To_JSON_String;
+
+   function To_JSON_String (C : Controller_Record) return String is
+   begin
+      return "    {" & ASCII.LF &
+             "      ""license"": """ & To_String (C.License_Number) & 
+             """," & ASCII.LF &
+             "      ""name"": """ & To_String (C.Name) & 
+             """," & ASCII.LF &
+             "      ""experience_years"": " & C.Experience_Years'Image & 
+             ASCII.LF &
+             "    }";
+   end To_JSON_String;
+
+   function To_JSON_String (F : Flight_Record) return String is
+   begin
+      return "    {" & ASCII.LF &
+             "      ""identifier"": """ & To_String (F.Identifier) & 
+             """," & ASCII.LF &
+             "      ""origin"": """ & To_String (F.Origin_Name) & 
+             """," & ASCII.LF &
+             "      ""destination"": """ & To_String (F.Destination_Name) & 
+             """" & ASCII.LF &
+             "    }";
+   end To_JSON_String;
+
    procedure Export_All_To_JSON is
-      use Ada.Calendar;
-
-      function To_JSON_String (A : Airport_Record) return String is
-      begin
-         return "    {" & ASCII.LF &
-                "      ""name"": """ & To_String (A.Name) & """," & ASCII.LF &
-                "      ""location"": """ & To_String (A.Location) & """," & ASCII.LF &
-                "      ""max_capacity"": " & A.Max_Capacity'Image & ASCII.LF &
-                "    }";
-      end To_JSON_String;
-
-      function To_JSON_String (C : Controller_Record) return String is
-      begin
-         return "    {" & ASCII.LF &
-                "      ""license"": """ & To_String (C.License_Number) & """," & ASCII.LF &
-                "      ""name"": """ & To_String (C.Name) & """," & ASCII.LF &
-                "      ""experience_years"": " & C.Experience_Years'Image & ASCII.LF &
-                "    }";
-      end To_JSON_String;
-
-      function To_JSON_String (F : Flight_Record) return String is
-      begin
-         return "    {" & ASCII.LF &
-                "      ""identifier"": """ & To_String (F.Identifier) & """," & ASCII.LF &
-                "      ""origin"": """ & To_String (F.Origin_Name) & """," & ASCII.LF &
-                "      ""destination"": """ & To_String (F.Destination_Name) & """" & ASCII.LF &
-                "    }";
-      end To_JSON_String;
-
       Data_Path       : constant String := "data/exports/";
-      Timestamp       : constant String := Ada.Calendar.Formatting.Image (Ada.Calendar.Clock);
+      Timestamp       : constant String := 
+        Ada.Calendar.Formatting.Image (Ada.Calendar.Clock);
       Clean_Timestamp : String := Timestamp;
       Filename        : Unbounded_String;
       Output_File     : Ada.Text_IO.File_Type;
@@ -54,7 +64,8 @@ package body Sync_Operations is
    begin
       -- Clean timestamp for filename
       for I in Clean_Timestamp'Range loop
-         if Clean_Timestamp (I) = ':' or Clean_Timestamp (I) = ' ' or Clean_Timestamp (I) = '.' then
+         if Clean_Timestamp (I) = ':' or Clean_Timestamp (I) = ' ' or 
+            Clean_Timestamp (I) = '.' then
             Clean_Timestamp (I) := '-';
          end if;
       end loop;
@@ -65,17 +76,20 @@ package body Sync_Operations is
       end if;
 
       -- Create filename
-      Filename := To_Unbounded_String (Data_Path & "export-" & Clean_Timestamp & ".json");
+      Filename := To_Unbounded_String (Data_Path & "export-" & 
+                                       Clean_Timestamp & ".json");
 
       -- Write JSON to file
-      Ada.Text_IO.Create (Output_File, Ada.Text_IO.Out_File, To_String (Filename));
+      Ada.Text_IO.Create (Output_File, Ada.Text_IO.Out_File, 
+                          To_String (Filename));
 
       Ada.Text_IO.Put_Line (Output_File, "{");
 
       -- Export Airports
       Ada.Text_IO.Put_Line (Output_File, "  ""airports"": [");
       for I in Airports.First_Index .. Airports.Last_Index loop
-         Ada.Text_IO.Put (Output_File, To_JSON_String (Airports.Element (I)));
+         Ada.Text_IO.Put (Output_File, 
+                          To_JSON_String (Airports.Element (I)));
          if I < Airports.Last_Index then
             Ada.Text_IO.Put_Line (Output_File, ",");
          else
@@ -87,7 +101,8 @@ package body Sync_Operations is
       -- Export Controllers
       Ada.Text_IO.Put_Line (Output_File, "  ""controllers"": [");
       for I in Controllers.First_Index .. Controllers.Last_Index loop
-         Ada.Text_IO.Put (Output_File, To_JSON_String (Controllers.Element (I)));
+         Ada.Text_IO.Put (Output_File, 
+                          To_JSON_String (Controllers.Element (I)));
          if I < Controllers.Last_Index then
             Ada.Text_IO.Put_Line (Output_File, ",");
          else
@@ -99,7 +114,8 @@ package body Sync_Operations is
       -- Export Flights
       Ada.Text_IO.Put_Line (Output_File, "  ""flights"": [");
       for I in Flights.First_Index .. Flights.Last_Index loop
-         Ada.Text_IO.Put (Output_File, To_JSON_String (Flights.Element (I)));
+         Ada.Text_IO.Put (Output_File, 
+                          To_JSON_String (Flights.Element (I)));
          if I < Flights.Last_Index then
             Ada.Text_IO.Put_Line (Output_File, ",");
          else
@@ -111,7 +127,8 @@ package body Sync_Operations is
       Ada.Text_IO.Put_Line (Output_File, "}");
       Ada.Text_IO.Close (Output_File);
 
-      Ada.Text_IO.Put_Line ("SUCCESS: Data exported to " & To_String (Filename));
+      Ada.Text_IO.Put_Line ("SUCCESS: Data exported to " & 
+                            To_String (Filename));
 
    exception
       when others =>
@@ -137,14 +154,16 @@ package body Sync_Operations is
       end loop;
 
       Ada.Text_IO.Close (Input_File);
-      Ada.Text_IO.Put_Line ("INFO: JSON import parsing not yet implemented - would parse and insert data here");
+      Ada.Text_IO.Put_Line ("INFO: JSON import parsing not yet " &
+                            "implemented - would parse and insert data here");
 
    exception
       when others =>
          if Ada.Text_IO.Is_Open (Input_File) then
             Ada.Text_IO.Close (Input_File);
          end if;
-         raise Sync_Error with "Failed to import data from JSON file: " & Filename;
+         raise Sync_Error with "Failed to import data from JSON file: " & 
+                               Filename;
    end Import_All_From_JSON;
 
    procedure Initialize_Sync_Config is
@@ -169,9 +188,8 @@ package body Sync_Operations is
    end Initialize_Sync_Config;
 
    procedure Create_Full_Backup is
-      use Ada.Calendar;
-
-      Timestamp       : constant String := Ada.Calendar.Formatting.Image (Ada.Calendar.Clock);
+      Timestamp       : constant String := 
+        Ada.Calendar.Formatting.Image (Ada.Calendar.Clock);
       Clean_Timestamp : String := Timestamp;
       Backup_Path     : constant String := "data/backups/";
       Backup_File     : Unbounded_String;
@@ -184,7 +202,8 @@ package body Sync_Operations is
    begin
       -- Clean timestamp for filename
       for I in Clean_Timestamp'Range loop
-         if Clean_Timestamp (I) = ':' or Clean_Timestamp (I) = ' ' or Clean_Timestamp (I) = '.' then
+         if Clean_Timestamp (I) = ':' or Clean_Timestamp (I) = ' ' or 
+            Clean_Timestamp (I) = '.' then
             Clean_Timestamp (I) := '-';
          end if;
       end loop;
@@ -193,51 +212,71 @@ package body Sync_Operations is
          Ada.Directories.Create_Path (Backup_Path);
       end if;
 
-      Backup_File := To_Unbounded_String (Backup_Path & "backup-" & Clean_Timestamp & ".txt");
+      Backup_File := To_Unbounded_String (Backup_Path & "backup-" & 
+                                          Clean_Timestamp & ".txt");
 
-      Ada.Text_IO.Create (Output_File, Ada.Text_IO.Out_File, To_String (Backup_File));
+      Ada.Text_IO.Create (Output_File, Ada.Text_IO.Out_File, 
+                          To_String (Backup_File));
 
-      Ada.Text_IO.Put_Line (Output_File, "========================================");
+      Ada.Text_IO.Put_Line (Output_File, 
+                            "========================================");
       Ada.Text_IO.Put_Line (Output_File, "FLIGHT MANAGEMENT SYSTEM BACKUP");
       Ada.Text_IO.Put_Line (Output_File, "Generated: " & Timestamp);
-      Ada.Text_IO.Put_Line (Output_File, "========================================");
+      Ada.Text_IO.Put_Line (Output_File, 
+                            "========================================");
       Ada.Text_IO.New_Line (Output_File);
 
       -- Backup Airports
-      Ada.Text_IO.Put_Line (Output_File, "AIRPORTS (" & Airports.Length'Image & " records):");
-      Ada.Text_IO.Put_Line (Output_File, "----------------------------------------");
+      Ada.Text_IO.Put_Line (Output_File, "AIRPORTS (" & 
+                            Airports.Length'Image & " records):");
+      Ada.Text_IO.Put_Line (Output_File, 
+                            "----------------------------------------");
       for A of Airports loop
-         Ada.Text_IO.Put_Line (Output_File, "Name: " & To_String (A.Name));
-         Ada.Text_IO.Put_Line (Output_File, "Location: " & To_String (A.Location));
-         Ada.Text_IO.Put_Line (Output_File, "Capacity: " & A.Max_Capacity'Image);
+         Ada.Text_IO.Put_Line (Output_File, 
+                               "Name: " & To_String (A.Name));
+         Ada.Text_IO.Put_Line (Output_File, 
+                               "Location: " & To_String (A.Location));
+         Ada.Text_IO.Put_Line (Output_File, 
+                               "Capacity: " & A.Max_Capacity'Image);
          Ada.Text_IO.Put_Line (Output_File, "---");
       end loop;
       Ada.Text_IO.New_Line (Output_File);
 
       -- Backup Controllers
-      Ada.Text_IO.Put_Line (Output_File, "CONTROLLERS (" & Controllers.Length'Image & " records):");
-      Ada.Text_IO.Put_Line (Output_File, "----------------------------------------");
+      Ada.Text_IO.Put_Line (Output_File, "CONTROLLERS (" & 
+                            Controllers.Length'Image & " records):");
+      Ada.Text_IO.Put_Line (Output_File, 
+                            "----------------------------------------");
       for C of Controllers loop
-         Ada.Text_IO.Put_Line (Output_File, "License: " & To_String (C.License_Number));
-         Ada.Text_IO.Put_Line (Output_File, "Name: " & To_String (C.Name));
-         Ada.Text_IO.Put_Line (Output_File, "Experience: " & C.Experience_Years'Image & " years");
+         Ada.Text_IO.Put_Line (Output_File, 
+                               "License: " & To_String (C.License_Number));
+         Ada.Text_IO.Put_Line (Output_File, 
+                               "Name: " & To_String (C.Name));
+         Ada.Text_IO.Put_Line (Output_File, "Experience: " & 
+                               C.Experience_Years'Image & " years");
          Ada.Text_IO.Put_Line (Output_File, "---");
       end loop;
       Ada.Text_IO.New_Line (Output_File);
 
       -- Backup Flights
-      Ada.Text_IO.Put_Line (Output_File, "FLIGHTS (" & Flights.Length'Image & " records):");
-      Ada.Text_IO.Put_Line (Output_File, "----------------------------------------");
+      Ada.Text_IO.Put_Line (Output_File, "FLIGHTS (" & 
+                            Flights.Length'Image & " records):");
+      Ada.Text_IO.Put_Line (Output_File, 
+                            "----------------------------------------");
       for F of Flights loop
-         Ada.Text_IO.Put_Line (Output_File, "Identifier: " & To_String (F.Identifier));
-         Ada.Text_IO.Put_Line (Output_File, "Origin: " & To_String (F.Origin_Name));
-         Ada.Text_IO.Put_Line (Output_File, "Destination: " & To_String (F.Destination_Name));
+         Ada.Text_IO.Put_Line (Output_File, 
+                               "Identifier: " & To_String (F.Identifier));
+         Ada.Text_IO.Put_Line (Output_File, 
+                               "Origin: " & To_String (F.Origin_Name));
+         Ada.Text_IO.Put_Line (Output_File, "Destination: " & 
+                               To_String (F.Destination_Name));
          Ada.Text_IO.Put_Line (Output_File, "---");
       end loop;
 
       Ada.Text_IO.Close (Output_File);
 
-      Ada.Text_IO.Put_Line ("SUCCESS: Full backup created at " & To_String (Backup_File));
+      Ada.Text_IO.Put_Line ("SUCCESS: Full backup created at " & 
+                            To_String (Backup_File));
 
    exception
       when others =>
