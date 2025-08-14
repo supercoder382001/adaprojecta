@@ -176,8 +176,7 @@ procedure Main is
                   Put_Line ("SUCCESS: All data has been cleared.");
                   exit;
                else
-                  Put_Line ("Operation cancelled. " &
-                           "Continuing with existing data.");
+                  Put_Line ("Operation cancelled.");
                   exit;
                end if;
             elsif Choice = "1" or else Choice'Length = 0 then
@@ -194,7 +193,7 @@ procedure Main is
    begin
       New_Line;
       Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
-      Put_Line ("Airports:    [1] Add    [2] List   [3] Update   " &
+      Put_Line ("Airports:    [1] Add     List    Update   " &
                 " Delete");
       Put_Line ("Controllers: [1] Add     List    Update   " &
                 " Delete");
