@@ -83,7 +83,7 @@ procedure Main is
 
    procedure Handle_Delete_Airport is
    begin
-      Database_Operations.Delete_Airport (Get_Input ("Name to Delete: "));
+      Database_Operations.Delete_Airport (By_Name => Get_Input ("Name to Delete: "));
       Put_Line ("SUCCESS: Airport deleted.");
    end Handle_Delete_Airport;
 
@@ -117,7 +117,7 @@ procedure Main is
 
    procedure Handle_Delete_Controller is
    begin
-      Database_Operations.Delete_Controller (Get_Input ("License to Delete: "));
+      Database_Operations.Delete_Controller (By_License => Get_Input ("License to Delete: "));
       Put_Line ("SUCCESS: Controller deleted.");
    end Handle_Delete_Controller;
 
@@ -151,7 +151,7 @@ procedure Main is
 
    procedure Handle_Delete_Flight is
    begin
-      Database_Operations.Delete_Flight (Get_Input ("Identifier to Delete: "));
+      Database_Operations.Delete_Flight (By_Identifier => Get_Input ("Identifier to Delete: "));
       Put_Line ("SUCCESS: Flight deleted.");
    end Handle_Delete_Flight;
 
@@ -193,9 +193,9 @@ procedure Main is
    begin
       New_Line;
       Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
-      Put_Line ("Airports:    [1] Add    [2] List   " &
+      Put_Line ("Airports:    [1] Add     List   " &
                 " Update    Delete");
-      Put_Line ("Controllers: [1] Add     List   " &
+      Put_Line ("Controllers: [2] Add     List   " &
                 " Update    Delete");
       Put_Line ("Flights:      Add    [A] List   " &
                 "[B] Update   [C] Delete");
