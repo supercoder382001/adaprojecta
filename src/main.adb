@@ -4,15 +4,41 @@ with Ada.Text_IO;         use Ada.Text_IO;
 with Ada.Exceptions;      use Ada.Exceptions;
 with Ada.Strings.Fixed;
 
-with Database_Operations;
-with Sync_Operations;
-with Flight_Types;
+with Database_Operations; use Database_Operations;
+with Sync_Operations;     use Sync_Operations;
+with Flight_Types;        use Flight_Types;
 
 procedure Main is
 
    ------------------------
    -- Helper Procedures --
    ------------------------
+   -- Forward declarations (specs) to fix style warnings
+   function Get_Input (Prompt : String) return String;
+   function Get_Positive_Input (Prompt : String) return Positive;
+   function Get_Natural_Input (Prompt : String) return Natural;
+
+   procedure Handle_Add_Airport;
+   procedure Handle_List_Airports;
+   procedure Handle_Update_Airport;
+   procedure Handle_Delete_Airport;
+
+   procedure Handle_Add_Controller;
+   procedure Handle_List_Controllers;
+   procedure Handle_Update_Controller;
+   procedure Handle_Delete_Controller;
+
+   procedure Handle_Add_Flight;
+   procedure Handle_List_Flights;
+   procedure Handle_Update_Flight;
+   procedure Handle_Delete_Flight;
+
+   procedure Handle_Startup_Options;
+   procedure Show_Menu;
+
+   -----------------------
+   -- Implementations --
+   -----------------------
    function Get_Input (Prompt : String) return String is
    begin
       Put (Prompt);
@@ -28,10 +54,6 @@ procedure Main is
    begin
       return Natural'Value (Get_Input (Prompt));
    end Get_Natural_Input;
-
-   ---------------------------------
-   -- Handlers for CRUD Operations --
-   ---------------------------------
 
    -- Airport Handlers
    procedure Handle_Add_Airport is
@@ -133,10 +155,7 @@ procedure Main is
       Put_Line ("SUCCESS: Flight deleted.");
    end Handle_Delete_Flight;
 
-
-   ---------------------------
-   -- New Startup Procedure --
-   ---------------------------
+   -- System Handlers
    procedure Handle_Startup_Options is
    begin
       loop
@@ -155,14 +174,14 @@ procedure Main is
                if Get_Line = "y" then
                   Database_Operations.Clear_All_Data;
                   Put_Line ("SUCCESS: All data has been cleared.");
-                  exit; -- Exit loop on valid choice
+                  exit;
                else
                   Put_Line ("Operation cancelled. Continuing with existing data.");
-                  exit; -- Exit loop on valid choice
+                  exit;
                end if;
             elsif Choice = "1" or else Choice'Length = 0 then
                Put_Line ("Continuing with existing data...");
-               exit; -- Exit loop on valid choice
+               exit;
             else
                Put_Line ("Invalid choice, please try again.");
             end if;
@@ -175,54 +194,75 @@ procedure Main is
       New_Line;
       Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
       Put_Line ("Airports:    [1] Add    [2] List   [3] Update   [4] Delete");
-      Put_Line ("Controllers: [2] Add     List    Update    Delete");
-      Put_Line ("Flights:      Add     List   Update   Delete");
+      Put_Line ("Controllers: [5] Add    [6] List   [7] Update   [8] Delete");
+      Put_Line ("Flights:     [9] Add     List   Update   Delete");
       Put_Line ("System:      [S] Stats  [B] Backup [E] Export   [Q] Quit");
       Put ("Enter choice: ");
    end Show_Menu;
 
+   ----------------
+   -- Main Logic --
+   ----------------
    Choice : String (1 .. 2);
-
 begin
    Database_Operations.Initialize_Database_Connection;
    Sync_Operations.Initialize_Sync_Config;
 
-   -- Show the startup options menu
    Handle_Startup_Options;
 
    loop
       Show_Menu;
       Choice := Ada.Strings.Fixed.Trim (Get_Line, Ada.Strings.Both);
       New_Line;
+
+      -- Main exception block for robust error handling
       begin
-         case Choice is
-            when "1"          => Handle_Add_Airport;
-            when "2"          => Handle_List_Airports;
-            when "3"          => Handle_Update_Airport;
-            when "4"          => Handle_Delete_Airport;
-            when "5"          => Handle_Add_Controller;
-            when "6"          => Handle_List_Controllers;
-            when "7"          => Handle_Update_Controller;
-            when "8"          => Handle_Delete_Controller;
-            when "9"          => Handle_Add_Flight;
-            when "10"         => Handle_List_Flights;
-            when "11"         => Handle_Update_Flight;
-            when "12"         => Handle_Delete_Flight;
-            when "S" | "s"    => Database_Operations.Get_Database_Statistics;
-            when "B" | "b"    => Sync_Operations.Create_Full_Backup;
-            when "E" | "e"    => Sync_Operations.Export_All_To_JSON;
-            when "Q" | "q"    => exit;
-            when others       => Put_Line ("Error: Invalid choice.");
-         end case;
+         -- CORRECTED: Changed from 'case' to 'if/elsif' to handle Strings
+         if Choice = "1" then
+            Handle_Add_Airport;
+         elsif Choice = "2" then
+            Handle_List_Airports;
+         elsif Choice = "3" then
+            Handle_Update_Airport;
+         elsif Choice = "4" then
+            Handle_Delete_Airport;
+         elsif Choice = "5" then
+            Handle_Add_Controller;
+         elsif Choice = "6" then
+            Handle_List_Controllers;
+         elsif Choice = "7" then
+            Handle_Update_Controller;
+         elsif Choice = "8" then
+            Handle_Delete_Controller;
+         elsif Choice = "9" then
+            Handle_Add_Flight;
+         elsif Choice = "10" then
+            Handle_List_Flights;
+         elsif Choice = "11" then
+            Handle_Update_Flight;
+         elsif Choice = "12" then
+            Handle_Delete_Flight;
+         elsif Choice = "S" or else Choice = "s" then
+            Database_Operations.Get_Database_Statistics;
+         elsif Choice = "B" or else Choice = "b" then
+            Sync_Operations.Create_Full_Backup;
+         elsif Choice = "E" or else Choice = "e" then
+            Sync_Operations.Export_All_To_JSON;
+         elsif Choice = "Q" or else Choice = "q" then
+            exit;
+         else
+            Put_Line ("Error: Invalid choice.");
+         end if;
+
       exception
          when E : Database_Operations.Record_Not_Found =>
             Put_Line ("ERROR: The record to update or delete was not found.");
-         when E : Database_operations.Duplicate_Record | Database_Operations.Invalid_Input =>
+         when E : Database_Operations.Duplicate_Record | Database_Operations.Invalid_Input =>
             Put_Line ("INPUT ERROR: " & Exception_Message (E));
          when E : Database_Operations.Database_Error | Sync_Operations.Sync_Error =>
             Put_Line ("SYSTEM ERROR: " & Exception_Message (E));
          when E : Constraint_Error =>
-            Put_Line ("INPUT ERROR: Invalid number format for a required numeric field.");
+            Put_Line ("INPUT ERROR: Invalid number format for a required field.");
          when E : others =>
             Put_Line ("UNEXPECTED ERROR: " & Exception_Message (E));
       end;
