@@ -1,213 +1,192 @@
 pragma Ada_2012;
-with Ada.Text_IO; use Ada.Text_IO;
-with Ada.Exceptions;
-with Ada.Strings.Unbounded;
-with ADO.Sessions;
-with ADO.Properties;
-with ADO.Statements;
-with ADO.Queries;
-with ADO.SQL;
-with Flight_Types;
+with Ada.Text_IO;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Flight_Types; use Flight_Types;
 
 package body Database_Operations is
 
-   DB_Factory : ADO.Sessions.Factory.Session_Factory;
+   -- In-memory storage vectors
+   Airports    : Airport_Vectors.Vector;
+   Controllers : Controller_Vectors.Vector;
+   Flights     : Flight_Vectors.Vector;
 
    procedure Initialize_Database_Connection is
-      Props : ADO.Properties.Manager;
    begin
-      Props.Load ("src/config/database.properties");
-      ADO.Sessions.Factory.Create (DB_Factory, Props);
-   exception
-      when E : others =>
-         raise Database_Error with "DB Factory Init Failed: " &
-           Ada.Exceptions.Exception_Message (E);
+      Ada.Text_IO.Put_Line ("Database connection initialized (in-memory).");
    end Initialize_Database_Connection;
 
    procedure Shutdown_Database_Connection is
    begin
-      Put_Line ("Database connections closed.");
+      Ada.Text_IO.Put_Line ("Database connections closed.");
    end Shutdown_Database_Connection;
 
-   function Get_Session return ADO.Sessions.Session is
-   begin
-      return DB_Factory.Get_Session;
-   end Get_Session;
-
-   procedure Call_DB_Function (SQL : String; Params : ADO.SQL.Params_List) is
-      Session : ADO.Sessions.Session := DB_Factory.Get_Session;
-      Query   : ADO.Queries.Query;
-   begin
-      Session.Create_Query (SQL, Query);
-      Query.Bind_Params (Params);
-      Query.Execute;
-      if Query.Is_Empty then
-         raise Database_Error with "Function returned no value.";
-      end if;
-      if not Query.Get_Boolean then
-         raise Record_Not_Found;
-      end if;
-   exception
-      when ADO.SQL.SQL_Error =>
-         raise Invalid_Input with
-           Ada.Exceptions.Exception_Message (ADO.SQL.SQL_Error'Identity);
-      when E : others =>
-         raise Database_Error with "Function call failed: " &
-           Ada.Exceptions.Exception_Message (E);
-   end Call_DB_Function;
-
    procedure Clear_All_Data is
-      Session : ADO.Sessions.Session := DB_Factory.Get_Session;
-      Stmt    : ADO.Statements.Statement;
-      SQL     : constant String :=
-        "TRUNCATE TABLE airports, controllers, flights CASCADE;";
    begin
-      Session.Create_Statement (SQL, Stmt);
-      Stmt.Execute;
-   exception
-      when E : others =>
-         raise Database_Error with "Failed to clear all data: " &
-           Ada.Exceptions.Exception_Message (E);
+      Airports.Clear;
+      Controllers.Clear;
+      Flights.Clear;
+      Ada.Text_IO.Put_Line ("All data cleared.");
    end Clear_All_Data;
 
-   procedure Add_Airport (Name, Location : String; Max_Capacity : Positive) is
+   procedure Add_Airport (Name : String; Location : String;
+                         Max_Capacity : Positive) is
+      New_Airport : Airport_Record;
    begin
-      Call_DB_Function ("SELECT add_airport(?,?,?)",
-                        ADO.SQL.Create_Params (Name, Location, Max_Capacity));
+      -- Check for duplicates
+      for A of Airports loop
+         if To_String (A.Name) = Name then
+            raise Duplicate_Record with "Airport already exists: " & Name;
+         end if;
+      end loop;
+
+      New_Airport.Name := To_Unbounded_String (Name);
+      New_Airport.Location := To_Unbounded_String (Location);
+      New_Airport.Max_Capacity := Max_Capacity;
+      Airports.Append (New_Airport);
    end Add_Airport;
+
+   function List_Airports return Flight_Types.Airport_Vectors.Vector is
+   begin
+      return Airports;
+   end List_Airports;
 
    procedure Update_Airport (Old_Name, New_Name, New_Location : String;
                             New_Capacity : Positive) is
    begin
-      Call_DB_Function ("SELECT update_airport(?,?,?,?)",
-                        ADO.SQL.Create_Params (Old_Name, New_Name,
-                                              New_Location, New_Capacity));
+      for I in Airports.First_Index .. Airports.Last_Index loop
+         if To_String (Airports.Element (I).Name) = Old_Name then
+            declare
+               Updated : Airport_Record := Airports.Element (I);
+            begin
+               Updated.Name := To_Unbounded_String (New_Name);
+               Updated.Location := To_Unbounded_String (New_Location);
+               Updated.Max_Capacity := New_Capacity;
+               Airports.Replace_Element (I, Updated);
+               return;
+            end;
+         end if;
+      end loop;
+      raise Record_Not_Found with "Airport not found: " & Old_Name;
    end Update_Airport;
 
    procedure Delete_Airport (By_Name : String) is
    begin
-      Call_DB_Function ("SELECT delete_airport(?)",
-                        ADO.SQL.Create_Params (By_Name));
+      for I in Airports.First_Index .. Airports.Last_Index loop
+         if To_String (Airports.Element (I).Name) = By_Name then
+            Airports.Delete (I);
+            return;
+         end if;
+      end loop;
+      raise Record_Not_Found with "Airport not found: " & By_Name;
    end Delete_Airport;
 
-   function List_Airports return Flight_Types.Airport_Vectors.Vector is
-      Session : ADO.Sessions.Session := DB_Factory.Get_Session;
-      Query   : ADO.Queries.Query;
-      Result  : Flight_Types.Airport_Vectors.Vector;
-      Item    : Flight_Types.Airport_Record;
-   begin
-      Session.Create_Query ("SELECT * FROM list_airports()", Query);
-      Query.Execute;
-      while not Query.Is_Empty loop
-         Item.Name := Ada.Strings.Unbounded.To_Unbounded_String
-           (Query.Get_String (1));
-         Item.Location := Ada.Strings.Unbounded.To_Unbounded_String
-           (Query.Get_String (2));
-         Item.Max_Capacity := Query.Get_Integer (3);
-         Result.Append (Item);
-         Query.Next;
-      end loop;
-      return Result;
-   end List_Airports;
-
    procedure Add_Controller (License, Name : String; Experience : Natural) is
+      New_Controller : Controller_Record;
    begin
-      Call_DB_Function ("SELECT add_controller(?,?,?)",
-                        ADO.SQL.Create_Params (License, Name, Experience));
+      -- Check for duplicates
+      for C of Controllers loop
+         if To_String (C.License_Number) = License then
+            raise Duplicate_Record with "Controller already exists: " & License;
+         end if;
+      end loop;
+
+      New_Controller.License_Number := To_Unbounded_String (License);
+      New_Controller.Name := To_Unbounded_String (Name);
+      New_Controller.Experience_Years := Experience;
+      Controllers.Append (New_Controller);
    end Add_Controller;
+
+   function List_Controllers return Flight_Types.Controller_Vectors.Vector is
+   begin
+      return Controllers;
+   end List_Controllers;
 
    procedure Update_Controller (Old_License, New_Name : String;
                                New_Experience : Natural) is
    begin
-      Call_DB_Function ("SELECT update_controller(?,?,?)",
-                        ADO.SQL.Create_Params (Old_License, New_Name,
-                                              New_Experience));
+      for I in Controllers.First_Index .. Controllers.Last_Index loop
+         if To_String (Controllers.Element (I).License_Number) = Old_License then
+            declare
+               Updated : Controller_Record := Controllers.Element (I);
+            begin
+               Updated.Name := To_Unbounded_String (New_Name);
+               Updated.Experience_Years := New_Experience;
+               Controllers.Replace_Element (I, Updated);
+               return;
+            end;
+         end if;
+      end loop;
+      raise Record_Not_Found with "Controller not found: " & Old_License;
    end Update_Controller;
 
    procedure Delete_Controller (By_License : String) is
    begin
-      Call_DB_Function ("SELECT delete_controller(?)",
-                        ADO.SQL.Create_Params (By_License));
-   end Delete_Controller;
-
-   function List_Controllers return Flight_Types.Controller_Vectors.Vector is
-      Session : ADO.Sessions.Session := DB_Factory.Get_Session;
-      Query   : ADO.Queries.Query;
-      Result  : Flight_Types.Controller_Vectors.Vector;
-      Item    : Flight_Types.Controller_Record;
-   begin
-      Session.Create_Query ("SELECT * FROM list_controllers()", Query);
-      Query.Execute;
-      while not Query.Is_Empty loop
-         Item.License_Number := Ada.Strings.Unbounded.To_Unbounded_String
-           (Query.Get_String (1));
-         Item.Name := Ada.Strings.Unbounded.To_Unbounded_String
-           (Query.Get_String (2));
-         Item.Experience_Years := Query.Get_Natural (3);
-         Result.Append (Item);
-         Query.Next;
+      for I in Controllers.First_Index .. Controllers.Last_Index loop
+         if To_String (Controllers.Element (I).License_Number) = By_License then
+            Controllers.Delete (I);
+            return;
+         end if;
       end loop;
-      return Result;
-   end List_Controllers;
+      raise Record_Not_Found with "Controller not found: " & By_License;
+   end Delete_Controller;
 
    procedure Add_Flight (Identifier, Origin_Airport_Name,
                         Dest_Airport_Name : String) is
+      New_Flight : Flight_Record;
    begin
-      Call_DB_Function ("SELECT add_flight(?,?,?)",
-                        ADO.SQL.Create_Params (Identifier, Origin_Airport_Name,
-                                              Dest_Airport_Name));
+      -- Check for duplicates
+      for F of Flights loop
+         if To_String (F.Identifier) = Identifier then
+            raise Duplicate_Record with "Flight already exists: " & Identifier;
+         end if;
+      end loop;
+
+      New_Flight.Identifier := To_Unbounded_String (Identifier);
+      New_Flight.Origin_Name := To_Unbounded_String (Origin_Airport_Name);
+      New_Flight.Destination_Name := To_Unbounded_String (Dest_Airport_Name);
+      Flights.Append (New_Flight);
    end Add_Flight;
+
+   function List_Flights return Flight_Types.Flight_Vectors.Vector is
+   begin
+      return Flights;
+   end List_Flights;
 
    procedure Update_Flight (Old_Identifier, New_Origin_Name,
                            New_Dest_Name : String) is
    begin
-      Call_DB_Function ("SELECT update_flight(?,?,?)",
-                        ADO.SQL.Create_Params (Old_Identifier, New_Origin_Name,
-                                              New_Dest_Name));
+      for I in Flights.First_Index .. Flights.Last_Index loop
+         if To_String (Flights.Element (I).Identifier) = Old_Identifier then
+            declare
+               Updated : Flight_Record := Flights.Element (I);
+            begin
+               Updated.Origin_Name := To_Unbounded_String (New_Origin_Name);
+               Updated.Destination_Name := To_Unbounded_String (New_Dest_Name);
+               Flights.Replace_Element (I, Updated);
+               return;
+            end;
+         end if;
+      end loop;
+      raise Record_Not_Found with "Flight not found: " & Old_Identifier;
    end Update_Flight;
 
    procedure Delete_Flight (By_Identifier : String) is
    begin
-      Call_DB_Function ("SELECT delete_flight(?)",
-                        ADO.SQL.Create_Params (By_Identifier));
+      for I in Flights.First_Index .. Flights.Last_Index loop
+         if To_String (Flights.Element (I).Identifier) = By_Identifier then
+            Flights.Delete (I);
+            return;
+         end if;
+      end loop;
+      raise Record_Not_Found with "Flight not found: " & By_Identifier;
    end Delete_Flight;
 
-   function List_Flights return Flight_Types.Flight_Vectors.Vector is
-      Session : ADO.Sessions.Session := DB_Factory.Get_Session;
-      Query   : ADO.Queries.Query;
-      Result  : Flight_Types.Flight_Vectors.Vector;
-      Item    : Flight_Types.Flight_Record;
-   begin
-      Session.Create_Query ("SELECT * FROM list_flights()", Query);
-      Query.Execute;
-      while not Query.Is_Empty loop
-         Item.Identifier := Ada.Strings.Unbounded.To_Unbounded_String
-           (Query.Get_String (1));
-         Item.Origin_Name := Ada.Strings.Unbounded.To_Unbounded_String
-           (Query.Get_String (2));
-         Item.Destination_Name := Ada.Strings.Unbounded.To_Unbounded_String
-           (Query.Get_String (3));
-         Result.Append (Item);
-         Query.Next;
-      end loop;
-      return Result;
-   end List_Flights;
-
    procedure Get_Database_Statistics is
-      Session : ADO.Sessions.Session := DB_Factory.Get_Session;
-      Query   : ADO.Queries.Query;
    begin
-      Session.Create_Query ("SELECT (SELECT COUNT(*) FROM airports), " &
-                           "(SELECT COUNT(*) FROM controllers), " &
-                           "(SELECT COUNT(*) FROM flights)", Query);
-      Query.Execute;
-      if not Query.Is_Empty then
-         New_Line;
-         Put_Line ("--- Statistics ---");
-         Put_Line ("Airports: " & Query.Get_Long_Integer'Image);
-         Put_Line ("Controllers: " & Query.Get_Long_Integer (2)'Image);
-         Put_Line ("Flights: " & Query.Get_Long_Integer (3)'Image);
-      end if;
+      Ada.Text_IO.Put_Line ("--- Statistics ---");
+      Ada.Text_IO.Put_Line ("Airports:" & Airports.Length'Image);
+      Ada.Text_IO.Put_Line ("Controllers:" & Controllers.Length'Image);
+      Ada.Text_IO.Put_Line ("Flights:" & Flights.Length'Image);
    end Get_Database_Statistics;
 
 end Database_Operations;
