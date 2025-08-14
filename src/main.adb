@@ -4,9 +4,9 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Exceptions; use Ada.Exceptions;
 with Ada.Strings.Fixed;
 
-with Database_Operations; use Database_Operations;
-with Sync_Operations; use Sync_Operations;
-with Flight_Types; use Flight_Types;
+with Database_Operations;
+with Sync_Operations;
+with Flight_Types;
 
 procedure Main is
 
@@ -83,7 +83,9 @@ procedure Main is
 
    procedure Handle_Delete_Airport is
    begin
-      Database_Operations.Delete_Airport (By_Name => Get_Input ("Name to Delete: "));
+      Database_Operations.Delete_Airport (
+         By_Name => Get_Input ("Name to Delete: ")
+      );
       Put_Line ("SUCCESS: Airport deleted.");
    end Handle_Delete_Airport;
 
@@ -117,7 +119,9 @@ procedure Main is
 
    procedure Handle_Delete_Controller is
    begin
-      Database_Operations.Delete_Controller (By_License => Get_Input ("License to Delete: "));
+      Database_Operations.Delete_Controller (
+         By_License => Get_Input ("License to Delete: ")
+      );
       Put_Line ("SUCCESS: Controller deleted.");
    end Handle_Delete_Controller;
 
@@ -151,7 +155,9 @@ procedure Main is
 
    procedure Handle_Delete_Flight is
    begin
-      Database_Operations.Delete_Flight (By_Identifier => Get_Input ("Identifier to Delete: "));
+      Database_Operations.Delete_Flight (
+         By_Identifier => Get_Input ("Identifier to Delete: ")
+      );
       Put_Line ("SUCCESS: Flight deleted.");
    end Handle_Delete_Flight;
 
@@ -195,7 +201,7 @@ procedure Main is
       Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
       Put_Line ("Airports:    [1] Add     List   " &
                 " Update    Delete");
-      Put_Line ("Controllers: [2] Add     List   " &
+      Put_Line ("Controllers: [1] Add     List   " &
                 " Update    Delete");
       Put_Line ("Flights:      Add    [A] List   " &
                 "[B] Update   [C] Delete");
@@ -253,20 +259,20 @@ begin
          end if;
 
       exception
-         when E : Database_Operations.Record_Not_Found =>
+         when Database_Operations.Record_Not_Found =>
             Put_Line ("ERROR: The record to update or delete " &
                       "was not found.");
-         when E : Database_Operations.Duplicate_Record |
-                  Database_Operations.Invalid_Input =>
-            Put_Line ("INPUT ERROR: " & Exception_Message (E));
-         when E : Database_Operations.Database_Error |
-                  Sync_Operations.Sync_Error =>
-            Put_Line ("SYSTEM ERROR: " & Exception_Message (E));
-         when E : Constraint_Error =>
+         when Database_Operations.Duplicate_Record |
+              Database_Operations.Invalid_Input =>
+            Put_Line ("INPUT ERROR: Invalid data provided.");
+         when Database_Operations.Database_Error |
+              Sync_Operations.Sync_Error =>
+            Put_Line ("SYSTEM ERROR: Database or sync operation failed.");
+         when Constraint_Error =>
             Put_Line ("INPUT ERROR: Invalid number format " &
                       "for a required numeric field.");
-         when E : others =>
-            Put_Line ("UNEXPECTED ERROR: " & Exception_Message (E));
+         when others =>
+            Put_Line ("UNEXPECTED ERROR: An unknown error occurred.");
       end;
    end loop;
 
