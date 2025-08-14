@@ -163,7 +163,7 @@ procedure Main is
          Put_Line ("Welcome to the Flight Management System.");
          Put_Line ("Startup Options:");
          Put_Line ("  [1] Continue with existing data (Default)");
-         Put_Line ("  [2] Clear all data and start fresh");
+         Put_Line ("   Clear all data and start fresh");
          Put ("Choose an option: ");
 
          declare
