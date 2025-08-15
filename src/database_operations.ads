@@ -9,6 +9,8 @@ package Database_Operations is
    procedure Shutdown_Database_Connection;
 
    procedure Clear_All_Data;
+   procedure Save_All_Data;
+   procedure Load_All_Data;
 
    procedure Add_Airport (Name : String; Location : String;
                          Max_Capacity : Positive);
