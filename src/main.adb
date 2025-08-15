@@ -506,3 +506,4 @@ exception
       Ada.Text_IO.Put_Line ("Fatal error occurred. Shutting down.");
       Shutdown_Database_Connection;
 end Main;
+#hell
