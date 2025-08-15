@@ -1,6 +1,8 @@
 pragma Ada_2012;
 with Ada.Text_IO;
+with Ada.Directories;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Ada.Strings.Fixed;
 with Flight_Types; use Flight_Types;
 
 package body Database_Operations is
@@ -26,6 +28,200 @@ package body Database_Operations is
       Flights.Clear;
       Ada.Text_IO.Put_Line ("All data cleared.");
    end Clear_All_Data;
+
+   procedure Save_All_Data is
+      Data_File : Ada.Text_IO.File_Type;
+      Data_Path : constant String := "data/flight_data.txt";
+   begin
+      if not Ada.Directories.Exists ("data/") then
+         Ada.Directories.Create_Path ("data/");
+      end if;
+
+      Ada.Text_IO.Create (Data_File, Ada.Text_IO.Out_File, Data_Path);
+
+      Ada.Text_IO.Put_Line (Data_File, "AIRPORTS:" & Airports.Length'Image);
+      for A of Airports loop
+         Ada.Text_IO.Put_Line (Data_File, To_String (A.Name) & "|" &
+                                          To_String (A.Location) & "|" &
+                                          Ada.Strings.Fixed.Trim (
+                                             A.Max_Capacity'Image,
+                                             Ada.Strings.Left));
+      end loop;
+
+      Ada.Text_IO.Put_Line (Data_File, "CONTROLLERS:" &
+                                       Controllers.Length'Image);
+      for C of Controllers loop
+         Ada.Text_IO.Put_Line (Data_File, To_String (C.License_Number) & "|" &
+                                          To_String (C.Name) & "|" &
+                                          Ada.Strings.Fixed.Trim (
+                                             C.Experience_Years'Image,
+                                             Ada.Strings.Left));
+      end loop;
+
+      Ada.Text_IO.Put_Line (Data_File, "FLIGHTS:" & Flights.Length'Image);
+      for F of Flights loop
+         Ada.Text_IO.Put_Line (Data_File, To_String (F.Identifier) & "|" &
+                                          To_String (F.Origin_Name) & "|" &
+                                          To_String (F.Destination_Name));
+      end loop;
+
+      Ada.Text_IO.Close (Data_File);
+      Ada.Text_IO.Put_Line ("Data saved successfully to " & Data_Path);
+   exception
+      when others =>
+         if Ada.Text_IO.Is_Open (Data_File) then
+            Ada.Text_IO.Close (Data_File);
+         end if;
+         Ada.Text_IO.Put_Line ("Warning: Failed to save data");
+   end Save_All_Data;
+
+   procedure Load_All_Data is
+      Data_File : Ada.Text_IO.File_Type;
+      Data_Path : constant String := "data/flight_data.txt";
+      Line : String (1 .. 500);
+      Line_Length : Natural;
+   begin
+      Airports.Clear;
+      Controllers.Clear;
+      Flights.Clear;
+
+      if not Ada.Directories.Exists (Data_Path) then
+         Ada.Text_IO.Put_Line ("No saved data found. Starting fresh.");
+         return;
+      end if;
+
+      Ada.Text_IO.Open (Data_File, Ada.Text_IO.In_File, Data_Path);
+
+      while not Ada.Text_IO.End_Of_File (Data_File) loop
+         Ada.Text_IO.Get_Line (Data_File, Line, Line_Length);
+
+         if Line_Length > 9 and then Line (1 .. 9) = "AIRPORTS:" then
+            declare
+               Count_Str : String := Ada.Strings.Fixed.Trim (
+                  Line (10 .. Line_Length), Ada.Strings.Both);
+               Count : Natural := Natural'Value (Count_Str);
+            begin
+               for I in 1 .. Count loop
+                  Ada.Text_IO.Get_Line (Data_File, Line, Line_Length);
+                  declare
+                     Line_Str : String := Line (1 .. Line_Length);
+                     Pipe1, Pipe2 : Natural := 0;
+                     New_Airport : Airport_Record;
+                  begin
+                     for J in Line_Str'Range loop
+                        if Line_Str (J) = '|' then
+                           if Pipe1 = 0 then
+                              Pipe1 := J;
+                           else
+                              Pipe2 := J;
+                              exit;
+                           end if;
+                        end if;
+                     end loop;
+
+                     New_Airport.Name := To_Unbounded_String (
+                        Line_Str (1 .. Pipe1 - 1));
+                     New_Airport.Location := To_Unbounded_String (
+                        Line_Str (Pipe1 + 1 .. Pipe2 - 1));
+                     New_Airport.Max_Capacity := Positive'Value (
+                        Line_Str (Pipe2 + 1 .. Line_Length));
+                     Airports.Append (New_Airport);
+                  end;
+               end loop;
+            end;
+
+         elsif Line_Length > 12 and then Line (1 .. 12) = "CONTROLLERS:" then
+            declare
+               Count_Str : String := Ada.Strings.Fixed.Trim (
+                  Line (13 .. Line_Length), Ada.Strings.Both);
+               Count : Natural := Natural'Value (Count_Str);
+            begin
+               for I in 1 .. Count loop
+                  Ada.Text_IO.Get_Line (Data_File, Line, Line_Length);
+                  declare
+                     Line_Str : String := Line (1 .. Line_Length);
+                     Pipe1, Pipe2 : Natural := 0;
+                     New_Controller : Controller_Record;
+                  begin
+                     for J in Line_Str'Range loop
+                        if Line_Str (J) = '|' then
+                           if Pipe1 = 0 then
+                              Pipe1 := J;
+                           else
+                              Pipe2 := J;
+                              exit;
+                           end if;
+                        end if;
+                     end loop;
+
+                     New_Controller.License_Number := To_Unbounded_String (
+                        Line_Str (1 .. Pipe1 - 1));
+                     New_Controller.Name := To_Unbounded_String (
+                        Line_Str (Pipe1 + 1 .. Pipe2 - 1));
+                     New_Controller.Experience_Years := Natural'Value (
+                        Line_Str (Pipe2 + 1 .. Line_Length));
+                     Controllers.Append (New_Controller);
+                  end;
+               end loop;
+            end;
+
+         elsif Line_Length > 8 and then Line (1 .. 8) = "FLIGHTS:" then
+            declare
+               Count_Str : String := Ada.Strings.Fixed.Trim (
+                  Line (9 .. Line_Length), Ada.Strings.Both);
+               Count : Natural := Natural'Value (Count_Str);
+            begin
+               for I in 1 .. Count loop
+                  Ada.Text_IO.Get_Line (Data_File, Line, Line_Length);
+                  declare
+                     Line_Str : String := Line (1 .. Line_Length);
+                     Pipe1, Pipe2 : Natural := 0;
+                     New_Flight : Flight_Record;
+                  begin
+                     for J in Line_Str'Range loop
+                        if Line_Str (J) = '|' then
+                           if Pipe1 = 0 then
+                              Pipe1 := J;
+                           else
+                              Pipe2 := J;
+                              exit;
+                           end if;
+                        end if;
+                     end loop;
+
+                     New_Flight.Identifier := To_Unbounded_String (
+                        Line_Str (1 .. Pipe1 - 1));
+                     New_Flight.Origin_Name := To_Unbounded_String (
+                        Line_Str (Pipe1 + 1 .. Pipe2 - 1));
+                     New_Flight.Destination_Name := To_Unbounded_String (
+                        Line_Str (Pipe2 + 1 .. Line_Length));
+                     Flights.Append (New_Flight);
+                  end;
+               end loop;
+            end;
+         end if;
+      end loop;
+
+      Ada.Text_IO.Close (Data_File);
+      Ada.Text_IO.Put_Line ("Data loaded successfully!");
+      Ada.Text_IO.Put_Line ("Loaded: " &
+                            Ada.Strings.Fixed.Trim (Airports.Length'Image,
+                                                   Ada.Strings.Left) &
+                            " airports, " &
+                            Ada.Strings.Fixed.Trim (Controllers.Length'Image,
+                                                   Ada.Strings.Left) &
+                            " controllers, " &
+                            Ada.Strings.Fixed.Trim (Flights.Length'Image,
+                                                   Ada.Strings.Left) &
+                            " flights");
+   exception
+      when others =>
+         if Ada.Text_IO.Is_Open (Data_File) then
+            Ada.Text_IO.Close (Data_File);
+         end if;
+         Ada.Text_IO.Put_Line ("Warning: Failed to load data. " &
+                               "Starting fresh.");
+   end Load_All_Data;
 
    procedure Add_Airport (Name : String; Location : String;
                          Max_Capacity : Positive) is
@@ -169,26 +365,4 @@ package body Database_Operations is
             end;
          end if;
       end loop;
-      raise Record_Not_Found with "Flight not found: " & Old_Identifier;
-   end Update_Flight;
-
-   procedure Delete_Flight (By_Identifier : String) is
-   begin
-      for I in Flights.First_Index .. Flights.Last_Index loop
-         if To_String (Flights.Element (I).Identifier) = By_Identifier then
-            Flights.Delete (I);
-            return;
-         end if;
-      end loop;
-      raise Record_Not_Found with "Flight not found: " & By_Identifier;
-   end Delete_Flight;
-
-   procedure Get_Database_Statistics is
-   begin
-      Ada.Text_IO.Put_Line ("--- Statistics ---");
-      Ada.Text_IO.Put_Line ("Airports:" & Airports.Length'Image);
-      Ada.Text_IO.Put_Line ("Controllers:" & Controllers.Length'Image);
-      Ada.Text_IO.Put_Line ("Flights:" & Flights.Length'Image);
-   end Get_Database_Statistics;
-
-end Database_Operations;
+      raise Record_Not_Found with "Flight
