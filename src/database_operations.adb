@@ -365,4 +365,26 @@ package body Database_Operations is
             end;
          end if;
       end loop;
-      raise Record_Not_Found with "Flight
+      raise Record_Not_Found with "Flight not found: " & Old_Identifier;
+   end Update_Flight;
+
+   procedure Delete_Flight (By_Identifier : String) is
+   begin
+      for I in Flights.First_Index .. Flights.Last_Index loop
+         if To_String (Flights.Element (I).Identifier) = By_Identifier then
+            Flights.Delete (I);
+            return;
+         end if;
+      end loop;
+      raise Record_Not_Found with "Flight not found: " & By_Identifier;
+   end Delete_Flight;
+
+   procedure Get_Database_Statistics is
+   begin
+      Ada.Text_IO.Put_Line ("--- Statistics ---");
+      Ada.Text_IO.Put_Line ("Airports:" & Airports.Length'Image);
+      Ada.Text_IO.Put_Line ("Controllers:" & Controllers.Length'Image);
+      Ada.Text_IO.Put_Line ("Flights:" & Flights.Length'Image);
+   end Get_Database_Statistics;
+
+end Database_Operations;
