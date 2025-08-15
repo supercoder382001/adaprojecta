@@ -5,12 +5,25 @@ package Database_Operations is
    Database_Error, Record_Not_Found, Duplicate_Record, Invalid_Input :
      exception;
 
+   -- Storage configuration
+   type Storage_Mode is (File_Only, Database_Only, Both);
+   Current_Storage_Mode : Storage_Mode := Both;
+
    procedure Initialize_Database_Connection;
    procedure Shutdown_Database_Connection;
 
    procedure Clear_All_Data;
    procedure Save_All_Data;
    procedure Load_All_Data;
+
+   -- Database-specific operations
+   procedure Save_To_Database;
+   procedure Load_From_Database;
+   procedure Clear_Database;
+
+   -- File-specific operations (existing)
+   procedure Save_To_File;
+   procedure Load_From_File;
 
    procedure Add_Airport (Name : String; Location : String;
                          Max_Capacity : Positive);
@@ -33,4 +46,8 @@ package Database_Operations is
    procedure Delete_Flight (By_Identifier : String);
 
    procedure Get_Database_Statistics;
+   
+   -- Storage mode management
+   procedure Set_Storage_Mode (Mode : Storage_Mode);
+   function Get_Storage_Mode return Storage_Mode;
 end Database_Operations;
