@@ -1,3 +1,4 @@
+#E
 pragma Ada_2012;
 with Ada.Text_IO;
 with Ada.Directories;
@@ -388,3 +389,4 @@ package body Database_Operations is
    end Get_Database_Statistics;
 
 end Database_Operations;
+
