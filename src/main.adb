@@ -1,281 +1,501 @@
 pragma Ada_2012;
-
 with Ada.Text_IO;
-with Ada.Strings.Fixed;
-
-with Database_Operations;
-with Sync_Operations;
-with Flight_Types;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Database_Operations; use Database_Operations;
+with Flight_Types; use Flight_Types;
+with Sync_Operations; use Sync_Operations;
 
 procedure Main is
 
-   function Get_Input (Prompt : String) return String;
-   function Get_Positive_Input (Prompt : String) return Positive;
-   function Get_Natural_Input (Prompt : String) return Natural;
-
-   procedure Handle_Add_Airport;
-   procedure Handle_List_Airports;
-   procedure Handle_Update_Airport;
-   procedure Handle_Delete_Airport;
-
-   procedure Handle_Add_Controller;
-   procedure Handle_List_Controllers;
-   procedure Handle_Update_Controller;
-   procedure Handle_Delete_Controller;
-
-   procedure Handle_Add_Flight;
-   procedure Handle_List_Flights;
-   procedure Handle_Update_Flight;
-   procedure Handle_Delete_Flight;
-
-   procedure Handle_Startup_Options;
-   procedure Show_Menu;
-
-   Choice : Character;
-
-   function Get_Input (Prompt : String) return String is
+   procedure Show_Menu is
    begin
-      Ada.Text_IO.Put (Prompt);
-      return Ada.Strings.Fixed.Trim (Source => Ada.Text_IO.Get_Line,
-                                      Side => Ada.Strings.Both);
-   end Get_Input;
-
-   function Get_Positive_Input (Prompt : String) return Positive is
-   begin
-      return Positive'Value (Get_Input (Prompt));
-   end Get_Positive_Input;
-
-   function Get_Natural_Input (Prompt : String) return Natural is
-   begin
-      return Natural'Value (Get_Input (Prompt));
-   end Get_Natural_Input;
+      Ada.Text_IO.Put_Line ("=== Flight Management System ===");
+      Ada.Text_IO.Put_Line ("[1] Add Airport      [1] List Airports");
+      Ada.Text_IO.Put_Line (" Update Airport    Delete Airport");
+      Ada.Text_IO.Put_Line ("[2] Add Controller    List Controllers");
+      Ada.Text_IO.Put_Line (" Update Controller  Delete Controller");
+      Ada.Text_IO.Put_Line (" Add Flight        List Flights");
+      Ada.Text_IO.Put_Line (" Update Flight    Delete Flight");
+      Ada.Text_IO.Put_Line ("[C] Clear All Data   [S] Statistics");
+      Ada.Text_IO.Put_Line ("[E] Export to JSON   [X] Backup Data");
+      Ada.Text_IO.Put_Line ("[Q] Quit");
+      Ada.Text_IO.New_Line;
+   end Show_Menu;
 
    procedure Handle_Add_Airport is
+      Name_Input      : String (1 .. 100);
+      Name_Length     : Natural;
+      Location_Input  : String (1 .. 100);
+      Location_Length : Natural;
+      Capacity_Input  : String (1 .. 10);
+      Capacity_Length : Natural;
+      Capacity_Value  : Positive;
+      Valid_Capacity  : Boolean := False;
    begin
-      Database_Operations.Add_Airport (
-         Name => Get_Input ("Name: "),
-         Location => Get_Input ("Location: "),
-         Max_Capacity => Get_Positive_Input ("Capacity: ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Airport added.");
+      Ada.Text_IO.Put ("Enter Airport Name: ");
+      Ada.Text_IO.Get_Line (Name_Input, Name_Length);
+
+      Ada.Text_IO.Put ("Enter Airport Location: ");
+      Ada.Text_IO.Get_Line (Location_Input, Location_Length);
+
+      while not Valid_Capacity loop
+         Ada.Text_IO.Put ("Enter Capacity (positive integer): ");
+         Ada.Text_IO.Get_Line (Capacity_Input, Capacity_Length);
+
+         if Capacity_Length > 0 then
+            declare
+               Tmp_Str  : String := Capacity_Input (1 .. Capacity_Length);
+               Is_Valid : Boolean := True;
+            begin
+               for I in Tmp_Str'Range loop
+                  if not (Tmp_Str (I) in '0' .. '9') then
+                     Is_Valid := False;
+                     exit;
+                  end if;
+               end loop;
+
+               if Is_Valid then
+                  Capacity_Value := Positive'Value (Tmp_Str);
+                  Valid_Capacity := True;
+               else
+                  Ada.Text_IO.Put_Line ("ERROR: Please enter only positive numbers");
+               end if;
+            exception
+               when others =>
+                  Ada.Text_IO.Put_Line ("ERROR: Invalid number format");
+            end;
+         else
+            Ada.Text_IO.Put_Line ("ERROR: Capacity cannot be empty");
+         end if;
+      end loop;
+
+      Add_Airport (Name_Input (1 .. Name_Length),
+                   Location_Input (1 .. Location_Length),
+                   Capacity_Value);
+      Ada.Text_IO.Put_Line ("Airport added successfully!");
+   exception
+      when Duplicate_Record =>
+         Ada.Text_IO.Put_Line ("ERROR: Airport already exists!");
+      when others =>
+         Ada.Text_IO.Put_Line ("ERROR: Failed to add airport!");
    end Handle_Add_Airport;
 
    procedure Handle_List_Airports is
+      Airports : Airport_Vectors.Vector := List_Airports;
    begin
-      Ada.Text_IO.Put_Line ("--- Airports List ---");
-      for Item of Database_Operations.List_Airports loop
-         Ada.Text_IO.Put_Line (Flight_Types.Image (Item));
-      end loop;
+      Ada.Text_IO.Put_Line ("=== Airports ===");
+      if Airports.Is_Empty then
+         Ada.Text_IO.Put_Line ("No airports found.");
+      else
+         for Airport of Airports loop
+            Ada.Text_IO.Put_Line (Image (Airport));
+         end loop;
+      end if;
    end Handle_List_Airports;
 
-   procedure Handle_Update_Airport is
-   begin
-      Database_Operations.Update_Airport (
-         Old_Name => Get_Input ("Current Name: "),
-         New_Name => Get_Input ("New Name: "),
-         New_Location => Get_Input ("New Location: "),
-         New_Capacity => Get_Positive_Input ("New Capacity: ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Airport updated.");
-   end Handle_Update_Airport;
-
-   procedure Handle_Delete_Airport is
-   begin
-      Database_Operations.Delete_Airport (
-         By_Name => Get_Input ("Name to Delete: ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Airport deleted.");
-   end Handle_Delete_Airport;
-
    procedure Handle_Add_Controller is
+      License_Input     : String (1 .. 50);
+      License_Length    : Natural;
+      Name_Input        : String (1 .. 100);
+      Name_Length       : Natural;
+      Experience_Input  : String (1 .. 10);
+      Experience_Length : Natural;
+      Experience_Value  : Natural;
+      Valid_Experience  : Boolean := False;
    begin
-      Database_Operations.Add_Controller (
-         License => Get_Input ("License: "),
-         Name => Get_Input ("Name: "),
-         Experience => Get_Natural_Input ("Experience (yrs): ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Controller added.");
+      Ada.Text_IO.Put ("Enter License Number: ");
+      Ada.Text_IO.Get_Line (License_Input, License_Length);
+
+      Ada.Text_IO.Put ("Enter Controller Name: ");
+      Ada.Text_IO.Get_Line (Name_Input, Name_Length);
+
+      while not Valid_Experience loop
+         Ada.Text_IO.Put ("Enter Experience Years (0-50): ");
+         Ada.Text_IO.Get_Line (Experience_Input, Experience_Length);
+
+         if Experience_Length > 0 then
+            declare
+               Tmp_Str  : String := Experience_Input (1 .. Experience_Length);
+               Is_Valid : Boolean := True;
+            begin
+               for I in Tmp_Str'Range loop
+                  if not (Tmp_Str (I) in '0' .. '9') then
+                     Is_Valid := False;
+                     exit;
+                  end if;
+               end loop;
+
+               if Is_Valid then
+                  Experience_Value := Natural'Value (Tmp_Str);
+                  if Experience_Value <= 50 then
+                     Valid_Experience := True;
+                  else
+                     Ada.Text_IO.Put_Line ("ERROR: Experience should be 0-50 years");
+                  end if;
+               else
+                  Ada.Text_IO.Put_Line ("ERROR: Please enter only numbers");
+               end if;
+            exception
+               when others =>
+                  Ada.Text_IO.Put_Line ("ERROR: Invalid number format");
+            end;
+         else
+            Ada.Text_IO.Put_Line ("ERROR: Experience cannot be empty");
+         end if;
+      end loop;
+
+      Add_Controller (License_Input (1 .. License_Length),
+                      Name_Input (1 .. Name_Length),
+                      Experience_Value);
+      Ada.Text_IO.Put_Line ("Controller added successfully!");
+   exception
+      when Duplicate_Record =>
+         Ada.Text_IO.Put_Line ("ERROR: Controller license already exists!");
+      when others =>
+         Ada.Text_IO.Put_Line ("ERROR: Failed to add controller!");
    end Handle_Add_Controller;
 
    procedure Handle_List_Controllers is
+      Controllers : Controller_Vectors.Vector := List_Controllers;
    begin
-      Ada.Text_IO.Put_Line ("--- Controllers List ---");
-      for Item of Database_Operations.List_Controllers loop
-         Ada.Text_IO.Put_Line (Flight_Types.Image (Item));
-      end loop;
+      Ada.Text_IO.Put_Line ("=== Controllers ===");
+      if Controllers.Is_Empty then
+         Ada.Text_IO.Put_Line ("No controllers found.");
+      else
+         for Controller of Controllers loop
+            Ada.Text_IO.Put_Line (Image (Controller));
+         end loop;
+      end if;
    end Handle_List_Controllers;
 
-   procedure Handle_Update_Controller is
-   begin
-      Database_Operations.Update_Controller (
-         Old_License => Get_Input ("Current License: "),
-         New_Name => Get_Input ("New Name: "),
-         New_Experience => Get_Natural_Input ("New Experience (yrs): ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Controller updated.");
-   end Handle_Update_Controller;
-
-   procedure Handle_Delete_Controller is
-   begin
-      Database_Operations.Delete_Controller (
-         By_License => Get_Input ("License to Delete: ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Controller deleted.");
-   end Handle_Delete_Controller;
-
    procedure Handle_Add_Flight is
+      Identifier_Input : String (1 .. 50);
+      Identifier_Length : Natural;
+      Origin_Input     : String (1 .. 100);
+      Origin_Length    : Natural;
+      Dest_Input       : String (1 .. 100);
+      Dest_Length      : Natural;
    begin
-      Database_Operations.Add_Flight (
-         Identifier => Get_Input ("Identifier: "),
-         Origin_Airport_Name => Get_Input ("Origin Airport: "),
-         Dest_Airport_Name => Get_Input ("Destination Airport: ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Flight added.");
+      Ada.Text_IO.Put ("Enter Flight Identifier: ");
+      Ada.Text_IO.Get_Line (Identifier_Input, Identifier_Length);
+
+      Ada.Text_IO.Put ("Enter Origin Airport: ");
+      Ada.Text_IO.Get_Line (Origin_Input, Origin_Length);
+
+      Ada.Text_IO.Put ("Enter Destination Airport: ");
+      Ada.Text_IO.Get_Line (Dest_Input, Dest_Length);
+
+      Add_Flight (Identifier_Input (1 .. Identifier_Length),
+                  Origin_Input (1 .. Origin_Length),
+                  Dest_Input (1 .. Dest_Length));
+      Ada.Text_IO.Put_Line ("Flight added successfully!");
+   exception
+      when Duplicate_Record =>
+         Ada.Text_IO.Put_Line ("ERROR: Flight identifier already exists!");
+      when others =>
+         Ada.Text_IO.Put_Line ("ERROR: Failed to add flight!");
    end Handle_Add_Flight;
 
    procedure Handle_List_Flights is
+      Flights : Flight_Vectors.Vector := List_Flights;
    begin
-      Ada.Text_IO.Put_Line ("--- Flights List ---");
-      for Item of Database_Operations.List_Flights loop
-         Ada.Text_IO.Put_Line (Flight_Types.Image (Item));
-      end loop;
+      Ada.Text_IO.Put_Line ("=== Flights ===");
+      if Flights.Is_Empty then
+         Ada.Text_IO.Put_Line ("No flights found.");
+      else
+         for Flight of Flights loop
+            Ada.Text_IO.Put_Line (Image (Flight));
+         end loop;
+      end if;
    end Handle_List_Flights;
 
-   procedure Handle_Update_Flight is
+   procedure Handle_Delete_Airport is
+      Name_Input  : String (1 .. 100);
+      Name_Length : Natural;
    begin
-      Database_Operations.Update_Flight (
-         Old_Identifier => Get_Input ("Current Identifier: "),
-         New_Origin_Name => Get_Input ("New Origin Airport: "),
-         New_Dest_Name => Get_Input ("New Destination Airport: ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Flight updated.");
-   end Handle_Update_Flight;
+      Ada.Text_IO.Put ("Enter Airport Name to Delete: ");
+      Ada.Text_IO.Get_Line (Name_Input, Name_Length);
+
+      Delete_Airport (Name_Input (1 .. Name_Length));
+      Ada.Text_IO.Put_Line ("Airport deleted successfully!");
+   exception
+      when Record_Not_Found =>
+         Ada.Text_IO.Put_Line ("ERROR: Airport not found!");
+      when others =>
+         Ada.Text_IO.Put_Line ("ERROR: Failed to delete airport!");
+   end Handle_Delete_Airport;
+
+   procedure Handle_Delete_Controller is
+      License_Input  : String (1 .. 50);
+      License_Length : Natural;
+   begin
+      Ada.Text_IO.Put ("Enter License Number to Delete: ");
+      Ada.Text_IO.Get_Line (License_Input, License_Length);
+
+      Delete_Controller (License_Input (1 .. License_Length));
+      Ada.Text_IO.Put_Line ("Controller deleted successfully!");
+   exception
+      when Record_Not_Found =>
+         Ada.Text_IO.Put_Line ("ERROR: Controller not found!");
+      when others =>
+         Ada.Text_IO.Put_Line ("ERROR: Failed to delete controller!");
+   end Handle_Delete_Controller;
 
    procedure Handle_Delete_Flight is
+      Identifier_Input  : String (1 .. 50);
+      Identifier_Length : Natural;
    begin
-      Database_Operations.Delete_Flight (
-         By_Identifier => Get_Input ("Identifier to Delete: ")
-      );
-      Ada.Text_IO.Put_Line ("SUCCESS: Flight deleted.");
+      Ada.Text_IO.Put ("Enter Flight Identifier to Delete: ");
+      Ada.Text_IO.Get_Line (Identifier_Input, Identifier_Length);
+
+      Delete_Flight (Identifier_Input (1 .. Identifier_Length));
+      Ada.Text_IO.Put_Line ("Flight deleted successfully!");
+   exception
+      when Record_Not_Found =>
+         Ada.Text_IO.Put_Line ("ERROR: Flight not found!");
+      when others =>
+         Ada.Text_IO.Put_Line ("ERROR: Failed to delete flight!");
    end Handle_Delete_Flight;
 
-   procedure Handle_Startup_Options is
-   begin
-      loop
-         Ada.Text_IO.New_Line;
-         Ada.Text_IO.Put_Line ("Welcome to the Flight Management System.");
-         Ada.Text_IO.Put_Line ("Startup Options:");
-         Ada.Text_IO.Put_Line ("  [1] Continue with existing data (Default)");
-         Ada.Text_IO.Put_Line ("   Clear all data and start fresh");
-         Ada.Text_IO.Put ("Choose an option: ");
-
-         declare
-            Choice : constant String := Ada.Text_IO.Get_Line;
-         begin
-            if Choice = "2" then
-               Ada.Text_IO.Put ("ARE YOU SURE you want to delete all data? " &
-                                "This cannot be undone. (y/n): ");
-               if Ada.Text_IO.Get_Line = "y" then
-                  Database_Operations.Clear_All_Data;
-                  Ada.Text_IO.Put_Line ("SUCCESS: All data has been cleared.");
-                  exit;
-               else
-                  Ada.Text_IO.Put_Line ("Operation cancelled.");
-                  exit;
-               end if;
-            elsif Choice = "1" or else Choice'Length = 0 then
-               Ada.Text_IO.Put_Line ("Continuing with existing data...");
-               exit;
-            else
-               Ada.Text_IO.Put_Line ("Invalid choice, please try again.");
-            end if;
-         end;
-      end loop;
-   end Handle_Startup_Options;
-
-   procedure Show_Menu is
-   begin
-      Ada.Text_IO.New_Line;
-      Ada.Text_IO.Put_Line ("---------- FLIGHT MANAGEMENT SYSTEM ----------");
-      Ada.Text_IO.Put_Line ("Airports:    [1] Add     List   " &
-                            " Update    Delete");
-      Ada.Text_IO.Put_Line ("Controllers: [1] Add     List   " &
-                            " Update    Delete");
-      Ada.Text_IO.Put_Line ("Flights:      Add    [A] List   " &
-                            "[B] Update   [C] Delete");
-      Ada.Text_IO.Put_Line ("System:      [S] Stats  [X] Backup " &
-                            "[E] Export   [Q] Quit");
-      Ada.Text_IO.Put ("Enter choice: ");
-   end Show_Menu;
+   Choice_Input  : String (1 .. 10);
+   Choice_Length : Natural;
+   Running       : Boolean := True;
 
 begin
-   Database_Operations.Initialize_Database_Connection;
-   Sync_Operations.Initialize_Sync_Config;
+   -- Initialize the system
+   Initialize_Database_Connection;
+   Initialize_Sync_Config;
 
-   Handle_Startup_Options;
+   Ada.Text_IO.Put_Line ("Welcome to Flight Management System!");
+   Ada.Text_IO.New_Line;
 
-   loop
+   -- Main program loop
+   while Running loop
       Show_Menu;
-      Ada.Text_IO.Get (Choice);
-      Ada.Text_IO.New_Line;
+      Ada.Text_IO.Put ("Enter your choice: ");
+      Ada.Text_IO.Get_Line (Choice_Input, Choice_Length);
 
-      begin
-         if Choice = '1' then
-            Handle_Add_Airport;
-         elsif Choice = '2' then
-            Handle_List_Airports;
-         elsif Choice = '3' then
-            Handle_Update_Airport;
-         elsif Choice = '4' then
-            Handle_Delete_Airport;
-         elsif Choice = '5' then
-            Handle_Add_Controller;
-         elsif Choice = '6' then
-            Handle_List_Controllers;
-         elsif Choice = '7' then
-            Handle_Update_Controller;
-         elsif Choice = '8' then
-            Handle_Delete_Controller;
-         elsif Choice = '9' then
-            Handle_Add_Flight;
-         elsif Choice = 'A' or else Choice = 'a' then
-            Handle_List_Flights;
-         elsif Choice = 'B' or else Choice = 'b' then
-            Handle_Update_Flight;
-         elsif Choice = 'C' or else Choice = 'c' then
-            Handle_Delete_Flight;
-         elsif Choice = 'S' or else Choice = 's' then
-            Database_Operations.Get_Database_Statistics;
-         elsif Choice = 'X' or else Choice = 'x' then
-            Sync_Operations.Create_Full_Backup;
-         elsif Choice = 'E' or else Choice = 'e' then
-            Sync_Operations.Export_All_To_JSON;
-         elsif Choice = 'Q' or else Choice = 'q' then
-            exit;
-         else
-            Ada.Text_IO.Put_Line ("Error: Invalid choice.");
-         end if;
+      if Choice_Length > 0 then
+         case Choice_Input (1) is
+            when '1' =>
+               Handle_Add_Airport;
 
-      exception
-         when Database_Operations.Record_Not_Found =>
-            Ada.Text_IO.Put_Line ("ERROR: The record to update or " &
-                                  "delete was not found.");
-         when Database_Operations.Duplicate_Record |
-              Database_Operations.Invalid_Input =>
-            Ada.Text_IO.Put_Line ("INPUT ERROR: Invalid data provided.");
-         when Database_Operations.Database_Error |
-              Sync_Operations.Sync_Error =>
-            Ada.Text_IO.Put_Line ("SYSTEM ERROR: Database or sync " &
-                                  "operation failed.");
-         when Constraint_Error =>
-            Ada.Text_IO.Put_Line ("INPUT ERROR: Invalid number format " &
-                                  "for a required numeric field.");
-         when others =>
-            Ada.Text_IO.Put_Line ("UNEXPECTED ERROR: An unknown error occurred.");
-      end;
+            when '2' =>
+               Handle_List_Airports;
+
+            when '3' =>
+               -- Update Airport
+               declare
+                  Old_Name_Input    : String (1 .. 100);
+                  Old_Name_Length   : Natural;
+                  New_Name_Input    : String (1 .. 100);
+                  New_Name_Length   : Natural;
+                  New_Location_Input : String (1 .. 100);
+                  New_Location_Length : Natural;
+                  New_Capacity_Input : String (1 .. 10);
+                  New_Capacity_Length : Natural;
+                  New_Capacity_Value : Positive;
+                  Valid_Capacity    : Boolean := False;
+               begin
+                  Ada.Text_IO.Put ("Enter Current Airport Name: ");
+                  Ada.Text_IO.Get_Line (Old_Name_Input, Old_Name_Length);
+
+                  Ada.Text_IO.Put ("Enter New Airport Name: ");
+                  Ada.Text_IO.Get_Line (New_Name_Input, New_Name_Length);
+
+                  Ada.Text_IO.Put ("Enter New Location: ");
+                  Ada.Text_IO.Get_Line (New_Location_Input, New_Location_Length);
+
+                  while not Valid_Capacity loop
+                     Ada.Text_IO.Put ("Enter New Capacity: ");
+                     Ada.Text_IO.Get_Line (New_Capacity_Input, New_Capacity_Length);
+
+                     if New_Capacity_Length > 0 then
+                        declare
+                           Tmp_Str  : String := New_Capacity_Input (1 .. New_Capacity_Length);
+                           Is_Valid : Boolean := True;
+                        begin
+                           for I in Tmp_Str'Range loop
+                              if not (Tmp_Str (I) in '0' .. '9') then
+                                 Is_Valid := False;
+                                 exit;
+                              end if;
+                           end loop;
+
+                           if Is_Valid then
+                              New_Capacity_Value := Positive'Value (Tmp_Str);
+                              Valid_Capacity := True;
+                           else
+                              Ada.Text_IO.Put_Line ("ERROR: Please enter only positive numbers");
+                           end if;
+                        exception
+                           when others =>
+                              Ada.Text_IO.Put_Line ("ERROR: Invalid number format");
+                        end;
+                     else
+                        Ada.Text_IO.Put_Line ("ERROR: Capacity cannot be empty");
+                     end if;
+                  end loop;
+
+                  Update_Airport (Old_Name_Input (1 .. Old_Name_Length),
+                                  New_Name_Input (1 .. New_Name_Length),
+                                  New_Location_Input (1 .. New_Location_Length),
+                                  New_Capacity_Value);
+                  Ada.Text_IO.Put_Line ("Airport updated successfully!");
+               exception
+                  when Record_Not_Found =>
+                     Ada.Text_IO.Put_Line ("ERROR: Airport not found!");
+                  when others =>
+                     Ada.Text_IO.Put_Line ("ERROR: Failed to update airport!");
+               end;
+
+            when '4' =>
+               Handle_Delete_Airport;
+
+            when '5' =>
+               Handle_Add_Controller;
+
+            when '6' =>
+               Handle_List_Controllers;
+
+            when '7' =>
+               -- Update Controller
+               declare
+                  Old_License_Input   : String (1 .. 50);
+                  Old_License_Length  : Natural;
+                  New_Name_Input      : String (1 .. 100);
+                  New_Name_Length     : Natural;
+                  New_Experience_Input : String (1 .. 10);
+                  New_Experience_Length : Natural;
+                  New_Experience_Value : Natural;
+                  Valid_Experience    : Boolean := False;
+               begin
+                  Ada.Text_IO.Put ("Enter Current License Number: ");
+                  Ada.Text_IO.Get_Line (Old_License_Input, Old_License_Length);
+
+                  Ada.Text_IO.Put ("Enter New Controller Name: ");
+                  Ada.Text_IO.Get_Line (New_Name_Input, New_Name_Length);
+
+                  while not Valid_Experience loop
+                     Ada.Text_IO.Put ("Enter New Experience Years: ");
+                     Ada.Text_IO.Get_Line (New_Experience_Input, New_Experience_Length);
+
+                     if New_Experience_Length > 0 then
+                        declare
+                           Tmp_Str  : String := New_Experience_Input (1 .. New_Experience_Length);
+                           Is_Valid : Boolean := True;
+                        begin
+                           for I in Tmp_Str'Range loop
+                              if not (Tmp_Str (I) in '0' .. '9') then
+                                 Is_Valid := False;
+                                 exit;
+                              end if;
+                           end loop;
+
+                           if Is_Valid then
+                              New_Experience_Value := Natural'Value (Tmp_Str);
+                              Valid_Experience := True;
+                           else
+                              Ada.Text_IO.Put_Line ("ERROR: Please enter only numbers");
+                           end if;
+                        exception
+                           when others =>
+                              Ada.Text_IO.Put_Line ("ERROR: Invalid number format");
+                        end;
+                     else
+                        Ada.Text_IO.Put_Line ("ERROR: Experience cannot be empty");
+                     end if;
+                  end loop;
+
+                  Update_Controller (Old_License_Input (1 .. Old_License_Length),
+                                     New_Name_Input (1 .. New_Name_Length),
+                                     New_Experience_Value);
+                  Ada.Text_IO.Put_Line ("Controller updated successfully!");
+               exception
+                  when Record_Not_Found =>
+                     Ada.Text_IO.Put_Line ("ERROR: Controller not found!");
+                  when others =>
+                     Ada.Text_IO.Put_Line ("ERROR: Failed to update controller!");
+               end;
+
+            when '8' =>
+               Handle_Delete_Controller;
+
+            when '9' =>
+               Handle_Add_Flight;
+
+            when '1' when Choice_Length >= 2 and then Choice_Input (2) = '0' =>
+               Handle_List_Flights;
+
+            when '1' when Choice_Length >= 2 and then Choice_Input (2) = '1' =>
+               -- Update Flight
+               declare
+                  Old_Identifier_Input   : String (1 .. 50);
+                  Old_Identifier_Length  : Natural;
+                  New_Origin_Input       : String (1 .. 100);
+                  New_Origin_Length      : Natural;
+                  New_Dest_Input         : String (1 .. 100);
+                  New_Dest_Length        : Natural;
+               begin
+                  Ada.Text_IO.Put ("Enter Current Flight Identifier: ");
+                  Ada.Text_IO.Get_Line (Old_Identifier_Input, Old_Identifier_Length);
+
+                  Ada.Text_IO.Put ("Enter New Origin Airport: ");
+                  Ada.Text_IO.Get_Line (New_Origin_Input, New_Origin_Length);
+
+                  Ada.Text_IO.Put ("Enter New Destination Airport: ");
+                  Ada.Text_IO.Get_Line (New_Dest_Input, New_Dest_Length);
+
+                  Update_Flight (Old_Identifier_Input (1 .. Old_Identifier_Length),
+                                 New_Origin_Input (1 .. New_Origin_Length),
+                                 New_Dest_Input (1 .. New_Dest_Length));
+                  Ada.Text_IO.Put_Line ("Flight updated successfully!");
+               exception
+                  when Record_Not_Found =>
+                     Ada.Text_IO.Put_Line ("ERROR: Flight not found!");
+                  when others =>
+                     Ada.Text_IO.Put_Line ("ERROR: Failed to update flight!");
+               end;
+
+            when '1' when Choice_Length >= 2 and then Choice_Input (2) = '2' =>
+               Handle_Delete_Flight;
+
+            when 'C' | 'c' =>
+               Clear_All_Data;
+               Ada.Text_IO.Put_Line ("All data cleared successfully!");
+
+            when 'S' | 's' =>
+               Get_Database_Statistics;
+
+            when 'E' | 'e' =>
+               Export_All_To_JSON;
+
+            when 'X' | 'x' =>
+               Create_Full_Backup;
+
+            when 'Q' | 'q' =>
+               Ada.Text_IO.Put_Line ("Shutting down...");
+               Running := False;
+
+            when others =>
+               Ada.Text_IO.Put_Line ("Invalid choice. Please try again.");
+         end case;
+      else
+         Ada.Text_IO.Put_Line ("Please enter a valid choice.");
+      end if;
+
+      if Running then
+         Ada.Text_IO.New_Line;
+         Ada.Text_IO.Put_Line ("Press Enter to continue...");
+         Ada.Text_IO.Skip_Line;
+      end if;
    end loop;
 
-   Database_Operations.Shutdown_Database_Connection;
-   Ada.Text_IO.Put_Line ("System shut down. Goodbye.");
+   Shutdown_Database_Connection;
+   Ada.Text_IO.Put_Line ("Goodbye!");
 
+exception
+   when others =>
+      Ada.Text_IO.Put_Line ("Fatal error occurred. Shutting down.");
+      Shutdown_Database_Connection;
 end Main;
