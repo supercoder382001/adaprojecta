@@ -97,14 +97,14 @@ package body Database_Operations is
 
          if Line_Length > 9 and then Line (1 .. 9) = "AIRPORTS:" then
             declare
-               Count_Str : String := Ada.Strings.Fixed.Trim (
+               Count_Str : constant String := Ada.Strings.Fixed.Trim (
                   Line (10 .. Line_Length), Ada.Strings.Both);
-               Count : Natural := Natural'Value (Count_Str);
+               Count : constant Natural := Natural'Value (Count_Str);
             begin
                for I in 1 .. Count loop
                   Ada.Text_IO.Get_Line (Data_File, Line, Line_Length);
                   declare
-                     Line_Str : String := Line (1 .. Line_Length);
+                     Line_Str : constant String := Line (1 .. Line_Length);
                      Pipe1, Pipe2 : Natural := 0;
                      New_Airport : Airport_Record;
                   begin
@@ -132,14 +132,14 @@ package body Database_Operations is
 
          elsif Line_Length > 12 and then Line (1 .. 12) = "CONTROLLERS:" then
             declare
-               Count_Str : String := Ada.Strings.Fixed.Trim (
+               Count_Str : constant String := Ada.Strings.Fixed.Trim (
                   Line (13 .. Line_Length), Ada.Strings.Both);
-               Count : Natural := Natural'Value (Count_Str);
+               Count : constant Natural := Natural'Value (Count_Str);
             begin
                for I in 1 .. Count loop
                   Ada.Text_IO.Get_Line (Data_File, Line, Line_Length);
                   declare
-                     Line_Str : String := Line (1 .. Line_Length);
+                     Line_Str : constant String := Line (1 .. Line_Length);
                      Pipe1, Pipe2 : Natural := 0;
                      New_Controller : Controller_Record;
                   begin
@@ -167,14 +167,14 @@ package body Database_Operations is
 
          elsif Line_Length > 8 and then Line (1 .. 8) = "FLIGHTS:" then
             declare
-               Count_Str : String := Ada.Strings.Fixed.Trim (
+               Count_Str : constant String := Ada.Strings.Fixed.Trim (
                   Line (9 .. Line_Length), Ada.Strings.Both);
-               Count : Natural := Natural'Value (Count_Str);
+               Count : constant Natural := Natural'Value (Count_Str);
             begin
                for I in 1 .. Count loop
                   Ada.Text_IO.Get_Line (Data_File, Line, Line_Length);
                   declare
-                     Line_Str : String := Line (1 .. Line_Length);
+                     Line_Str : constant String := Line (1 .. Line_Length);
                      Pipe1, Pipe2 : Natural := 0;
                      New_Flight : Flight_Record;
                   begin
