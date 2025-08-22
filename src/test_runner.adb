@@ -1,7 +1,8 @@
 pragma Ada_2012;
 with Ada.Text_IO;
 with Ada.Directories;
-with Ada.Strings.Fixed;
+with Ada.Strings.Unbounded;
+with Ada.Exceptions;
 with Database_Operations; use Database_Operations;
 
 package body Test_Runner is
@@ -107,154 +108,176 @@ package body Test_Runner is
    function Parse_Test_Line
      (Line : String; Length : Natural) return Boolean is
       
-      function Get_Token (Text : String; Token_Num : Positive) return String is
-         Current_Token : Natural := 1;
-         Start_Pos : Natural := 1;
-         End_Pos : Natural;
-      begin
-         --  Skip leading spaces
-         while Start_Pos <= Text'Length and then 
-               (Text (Start_Pos) = ' ' or Text (Start_Pos) = ASCII.HT) loop
-            Start_Pos := Start_Pos + 1;
-         end loop;
+      type Token_Array is array (Positive range <>) of 
+        Ada.Strings.Unbounded.Unbounded_String;
 
-         --  Find tokens
-         while Current_Token <= Token_Num and Start_Pos <= Text'Length loop
-            End_Pos := Start_Pos;
-            
-            --  Find end of current token
-            while End_Pos <= Text'Length and then
-                  Text (End_Pos) /= ' ' and Text (End_Pos) /= ASCII.HT loop
-               End_Pos := End_Pos + 1;
-            end loop;
-
-            if Current_Token = Token_Num then
-               return Text (Start_Pos .. End_Pos - 1);
-            end if;
-
-            Current_Token := Current_Token + 1;
-            Start_Pos := End_Pos + 1;
-
-            --  Skip spaces between tokens
-            while Start_Pos <= Text'Length and then 
-                  (Text (Start_Pos) = ' ' or Text (Start_Pos) = ASCII.HT) loop
-               Start_Pos := Start_Pos + 1;
-            end loop;
-         end loop;
-
-         return ""; --  Token not found
-      end Get_Token;
-
-      function Count_Tokens (Text : String) return Natural is
+      function Split_By_Spaces (Text : String) return Token_Array is
+         Temp_Tokens : array (1 .. 20) of Ada.Strings.Unbounded.Unbounded_String;
          Count : Natural := 0;
-         In_Token : Boolean := False;
+         Start_Pos : Natural := Text'First;
+         I : Natural := Text'First;
       begin
-         for I in Text'Range loop
-            if Text (I) /= ' ' and Text (I) /= ASCII.HT then
-               if not In_Token then
+         -- Skip leading spaces
+         while I <= Text'Last and then Text (I) = ' ' loop
+            I := I + 1;
+         end loop;
+         Start_Pos := I;
+
+         -- Extract tokens
+         while I <= Text'Last loop
+            if Text (I) = ' ' then
+               -- Found a token
+               if I > Start_Pos then
                   Count := Count + 1;
-                  In_Token := True;
+                  Temp_Tokens (Count) := 
+                    Ada.Strings.Unbounded.To_Unbounded_String 
+                      (Text (Start_Pos .. I - 1));
                end if;
+               
+               -- Skip multiple spaces
+               while I <= Text'Last and then Text (I) = ' ' loop
+                  I := I + 1;
+               end loop;
+               Start_Pos := I;
             else
-               In_Token := False;
+               I := I + 1;
             end if;
          end loop;
-         return Count;
-      end Count_Tokens;
+
+         -- Handle last token
+         if Start_Pos <= Text'Last then
+            Count := Count + 1;
+            Temp_Tokens (Count) := 
+              Ada.Strings.Unbounded.To_Unbounded_String 
+                (Text (Start_Pos .. Text'Last));
+         end if;
+
+         -- Return properly sized array
+         declare
+            Result : Token_Array (1 .. Count);
+         begin
+            for J in 1 .. Count loop
+               Result (J) := Temp_Tokens (J);
+            end loop;
+            return Result;
+         end;
+      end Split_By_Spaces;
 
       Clean_Line : String (1 .. Length);
       Clean_Length : Natural := 0;
-      Command : String (1 .. 50);
-      Command_Length : Natural;
-      Token_Count : Natural;
 
    begin
-      --  Remove comments
+      -- Remove comments and clean line
       for I in 1 .. Length loop
          exit when Line (Line'First + I - 1) = '#';
          Clean_Line (I) := Line (Line'First + I - 1);
          Clean_Length := I;
       end loop;
 
-      --  Skip empty lines
+      -- Skip empty lines
       if Clean_Length = 0 then
          return True;
       end if;
 
       declare
-         Working_Line : String := Clean_Line (1 .. Clean_Length);
+         Tokens : constant Token_Array := 
+           Split_By_Spaces (Clean_Line (1 .. Clean_Length));
+         Command : constant String := 
+           Ada.Strings.Unbounded.To_String (Tokens (1));
       begin
-         Token_Count := Count_Tokens (Working_Line);
-         
-         if Token_Count = 0 then
-            return True;
-         end if;
-
-         declare
-            Cmd : String := Get_Token (Working_Line, 1);
-         begin
-            Command_Length := Cmd'Length;
-            Command (1 .. Command_Length) := Cmd;
-         end;
-
-         --  Process commands
-         declare
-            Full_Command : String := Command (1 .. Command_Length);
-         begin
-            Ada.Text_IO.Put_Line ("DEBUG: Command='" & Full_Command & 
-                                  "' Tokens=" & Token_Count'Image);
-
-            if Full_Command = "ADD_AIRPORT" and Token_Count = 4 then
+         -- Execute commands with individual exception handling
+         if Command = "ADD_AIRPORT" and Tokens'Length = 4 then
+            begin
                Execute_Add_Airport_Test
-                 (Get_Token (Working_Line, 2),
-                  Get_Token (Working_Line, 3),
-                  Positive'Value (Get_Token (Working_Line, 4)));
+                 (Ada.Strings.Unbounded.To_String (Tokens (2)),
+                  Ada.Strings.Unbounded.To_String (Tokens (3)),
+                  Positive'Value (Ada.Strings.Unbounded.To_String (Tokens (4))));
+            exception
+               when E : others =>
+                  Log_Test_Result (False, "ADD_AIRPORT failed: " & 
+                                  Ada.Exceptions.Exception_Message (E));
+            end;
 
-            elsif Full_Command = "ADD_CONTROLLER" and Token_Count = 4 then
+         elsif Command = "ADD_CONTROLLER" and Tokens'Length = 4 then
+            begin
                Execute_Add_Controller_Test
-                 (Get_Token (Working_Line, 2),
-                  Get_Token (Working_Line, 3),
-                  Natural'Value (Get_Token (Working_Line, 4)));
+                 (Ada.Strings.Unbounded.To_String (Tokens (2)),
+                  Ada.Strings.Unbounded.To_String (Tokens (3)),
+                  Natural'Value (Ada.Strings.Unbounded.To_String (Tokens (4))));
+            exception
+               when E : others =>
+                  Log_Test_Result (False, "ADD_CONTROLLER failed: " & 
+                                  Ada.Exceptions.Exception_Message (E));
+            end;
 
-            elsif Full_Command = "ADD_FLIGHT" and Token_Count = 4 then
+         elsif Command = "ADD_FLIGHT" and Tokens'Length = 4 then
+            begin
                Execute_Add_Flight_Test
-                 (Get_Token (Working_Line, 2),
-                  Get_Token (Working_Line, 3),
-                  Get_Token (Working_Line, 4));
+                 (Ada.Strings.Unbounded.To_String (Tokens (2)),
+                  Ada.Strings.Unbounded.To_String (Tokens (3)),
+                  Ada.Strings.Unbounded.To_String (Tokens (4)));
+            exception
+               when E : others =>
+                  Log_Test_Result (False, "ADD_FLIGHT failed: " & 
+                                  Ada.Exceptions.Exception_Message (E));
+            end;
 
-            elsif Full_Command = "DELETE_AIRPORT" and Token_Count = 2 then
-               Execute_Delete_Test ("AIRPORT", Get_Token (Working_Line, 2));
-
-            elsif Full_Command = "DELETE_CONTROLLER" and Token_Count = 2 then
-               Execute_Delete_Test ("CONTROLLER", Get_Token (Working_Line, 2));
-
-            elsif Full_Command = "DELETE_FLIGHT" and Token_Count = 2 then
-               Execute_Delete_Test ("FLIGHT", Get_Token (Working_Line, 2));
-
-            elsif Full_Command = "VERIFY_AIRPORT_COUNT" and Token_Count = 2 then
+         elsif Command = "VERIFY_AIRPORT_COUNT" and Tokens'Length = 2 then
+            begin
                Execute_Verify_Count_Test 
-                 ("AIRPORT", Natural'Value (Get_Token (Working_Line, 2)));
+                 ("AIRPORT", 
+                  Natural'Value (Ada.Strings.Unbounded.To_String (Tokens (2))));
+            exception
+               when E : others =>
+                  Log_Test_Result (False, "VERIFY_AIRPORT_COUNT failed: " & 
+                                  Ada.Exceptions.Exception_Message (E));
+            end;
 
-            elsif Full_Command = "VERIFY_CONTROLLER_COUNT" and Token_Count = 2 then
+         elsif Command = "VERIFY_CONTROLLER_COUNT" and Tokens'Length = 2 then
+            begin
                Execute_Verify_Count_Test 
-                 ("CONTROLLER", Natural'Value (Get_Token (Working_Line, 2)));
+                 ("CONTROLLER", 
+                  Natural'Value (Ada.Strings.Unbounded.To_String (Tokens (2))));
+            exception
+               when E : others =>
+                  Log_Test_Result (False, "VERIFY_CONTROLLER_COUNT failed: " & 
+                                  Ada.Exceptions.Exception_Message (E));
+            end;
 
-            elsif Full_Command = "VERIFY_FLIGHT_COUNT" and Token_Count = 2 then
+         elsif Command = "VERIFY_FLIGHT_COUNT" and Tokens'Length = 2 then
+            begin
                Execute_Verify_Count_Test 
-                 ("FLIGHT", Natural'Value (Get_Token (Working_Line, 2)));
+                 ("FLIGHT", 
+                  Natural'Value (Ada.Strings.Unbounded.To_String (Tokens (2))));
+            exception
+               when E : others =>
+                  Log_Test_Result (False, "VERIFY_FLIGHT_COUNT failed: " & 
+                                  Ada.Exceptions.Exception_Message (E));
+            end;
 
-            else
-               Log_Test_Result (False, "Unknown command '" & Full_Command & 
-                               "' or wrong token count (" & Token_Count'Image & ")");
-            end if;
-         end;
+         elsif Command = "DELETE_AIRPORT" and Tokens'Length = 2 then
+            Execute_Delete_Test ("AIRPORT", 
+                                 Ada.Strings.Unbounded.To_String (Tokens (2)));
+
+         elsif Command = "DELETE_CONTROLLER" and Tokens'Length = 2 then
+            Execute_Delete_Test ("CONTROLLER", 
+                                 Ada.Strings.Unbounded.To_String (Tokens (2)));
+
+         elsif Command = "DELETE_FLIGHT" and Tokens'Length = 2 then
+            Execute_Delete_Test ("FLIGHT", 
+                                 Ada.Strings.Unbounded.To_String (Tokens (2)));
+
+         else
+            Log_Test_Result (False, "Unknown command '" & Command & 
+                            "' or wrong token count (" & Tokens'Length'Image & ")");
+         end if;
       end;
 
       return True;
    exception
-      when others =>
-         Log_Test_Result (False, "Parse error on line: " &
-                          Line (Line'First .. Line'First + Length - 1));
+      when E : others =>
+         Log_Test_Result (False, "Parse error: " & 
+                          Ada.Exceptions.Exception_Message (E));
          return False;
    end Parse_Test_Line;
 
@@ -289,6 +312,8 @@ package body Test_Runner is
 
       if not Ada.Directories.Exists ("test_cases.txt") then
          Ada.Text_IO.Put_Line ("❌ Test file 'test_cases.txt' not found!");
+         Ada.Text_IO.Put_Line 
+           ("Please create the test file in project root.");
          return;
       end if;
 
