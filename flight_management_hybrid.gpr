@@ -1,0 +1,20 @@
+with "ado";
+with "ado_postgresql";
+with "gnat_json";
+
+project Flight_Management_Hybrid is
+
+   for Source_Dirs use ("src", "src/config");
+   for Object_Dir use "obj";
+   for Exec_Dir use ".";
+   for Main use ("main.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnatwa", "-gnaty", "-gnatwe", "-Wall", "-gnat2012");
+   end Compiler;
+
+   package Binder is
+      for Default_Switches ("Ada") use ("-Es");
+   end Binder;
+
+end Flight_Management_Hybrid;
