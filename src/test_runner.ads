@@ -12,17 +12,17 @@ package Test_Runner is
      (License, Name : String; Experience : Natural);
    procedure Execute_Add_Flight_Test
      (Identifier, Origin, Destination : String);
-   procedure Execute_Delete_Test 
+   procedure Execute_Delete_Test
      (Entity_Type, Identifier : String);
    procedure Execute_Verify_Count_Test
      (Entity_Type : String; Expected_Count : Natural);
 
    --  Utility procedures
-   function Parse_Test_Line 
+   function Parse_Test_Line
      (Line : String; Length : Natural) return Boolean;
-   procedure Show_Test_Results 
+   procedure Show_Test_Results
      (Total_Tests, Passed_Tests : Natural);
-   procedure Log_Test_Result 
+   procedure Log_Test_Result
      (Success : Boolean; Message : String);
 
 end Test_Runner;
