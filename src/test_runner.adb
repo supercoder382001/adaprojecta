@@ -112,142 +112,118 @@ package body Test_Runner is
       Tokens : array (1 .. 10) of String (1 .. 50);
       Token_Lengths : array (1 .. 10) of Natural := (others => 0);
       Token_Count : Natural := 0;
-      Index : Natural := Line'First;
+      I : Natural := 1;
       Start_Pos : Natural;
-      Effective_Length : Natural := Length;
+      Clean_Line : String (1 .. Length);
+      Clean_Length : Natural := 0;
 
    begin
-      --  Remove comment part (everything after #)
-      for I in Line'First .. Line'First + Length - 1 loop
-         if Line (I) = '#' then
-            Effective_Length := I - Line'First;
+      --  First, clean the line by removing comments
+      for J in 1 .. Length loop
+         if Line (Line'First + J - 1) = '#' then
             exit;
          end if;
+         Clean_Line (J) := Line (Line'First + J - 1);
+         Clean_Length := J;
       end loop;
 
       --  Skip leading spaces
-      while Index <= Line'First + Effective_Length - 1 and then
-            (Line (Index) = ' ' or else Line (Index) = ASCII.HT) loop
-         Index := Index + 1;
+      while I <= Clean_Length and then
+            (Clean_Line (I) = ' ' or Clean_Line (I) = ASCII.HT) loop
+         I := I + 1;
       end loop;
 
-      --  Parse tokens
-      while Index <= Line'First + Effective_Length - 1 loop
-         Start_Pos := Index;
+      --  Extract tokens
+      while I <= Clean_Length loop
+         Start_Pos := I;
 
-         --  Find end of current token
-         while Index <= Line'First + Effective_Length - 1 and then
-               (Line (Index) /= ' ' and Line (Index) /= ASCII.HT) loop
-            Index := Index + 1;
+         --  Find end of current token (non-space character)
+         while I <= Clean_Length and then
+               Clean_Line (I) /= ' ' and Clean_Line (I) /= ASCII.HT loop
+            I := I + 1;
          end loop;
 
-         --  Store token if we found one
-         if Index > Start_Pos then
+         --  Store the token
+         if I > Start_Pos then
             Token_Count := Token_Count + 1;
-            Token_Lengths (Token_Count) := Index - Start_Pos;
-            Tokens (Token_Count) := (others => ' '); -- Initialize
+            Token_Lengths (Token_Count) := I - Start_Pos;
+            Tokens (Token_Count) := (others => ' ');
             Tokens (Token_Count) (1 .. Token_Lengths (Token_Count)) :=
-              Line (Start_Pos .. Index - 1);
+              Clean_Line (Start_Pos .. I - 1);
          end if;
 
-         --  Skip spaces before next token
-         while Index <= Line'First + Effective_Length - 1 and then
-               (Line (Index) = ' ' or else Line (Index) = ASCII.HT) loop
-            Index := Index + 1;
+         --  Skip spaces
+         while I <= Clean_Length and then
+               (Clean_Line (I) = ' ' or Clean_Line (I) = ASCII.HT) loop
+            I := I + 1;
          end loop;
       end loop;
 
-      --  Process tokens if we have any
+      --  Skip empty lines
       if Token_Count = 0 then
-         return True; -- Empty line
+         return True;
       end if;
 
+      --  Process commands
       declare
          Command : constant String := Tokens (1) (1 .. Token_Lengths (1));
       begin
-         if Command = "ADD_AIRPORT" and Token_Count >= 4 then
-            declare
-               Name : constant String :=
-                 Tokens (2) (1 .. Token_Lengths (2));
-               Location : constant String :=
-                 Tokens (3) (1 .. Token_Lengths (3));
-               Capacity : constant Positive :=
-                 Positive'Value (Tokens (4) (1 .. Token_Lengths (4)));
-            begin
-               Execute_Add_Airport_Test (Name, Location, Capacity);
-            end;
+         if Command = "ADD_AIRPORT" and Token_Count = 4 then
+            Execute_Add_Airport_Test
+              (Tokens (2) (1 .. Token_Lengths (2)),
+               Tokens (3) (1 .. Token_Lengths (3)),
+               Positive'Value (Tokens (4) (1 .. Token_Lengths (4))));
 
-         elsif Command = "ADD_CONTROLLER" and Token_Count >= 4 then
-            declare
-               License : constant String :=
-                 Tokens (2) (1 .. Token_Lengths (2));
-               Name : constant String :=
-                 Tokens (3) (1 .. Token_Lengths (3));
-               Experience : constant Natural :=
-                 Natural'Value (Tokens (4) (1 .. Token_Lengths (4)));
-            begin
-               Execute_Add_Controller_Test (License, Name, Experience);
-            end;
+         elsif Command = "ADD_CONTROLLER" and Token_Count = 4 then
+            Execute_Add_Controller_Test
+              (Tokens (2) (1 .. Token_Lengths (2)),
+               Tokens (3) (1 .. Token_Lengths (3)),
+               Natural'Value (Tokens (4) (1 .. Token_Lengths (4))));
 
-         elsif Command = "ADD_FLIGHT" and Token_Count >= 4 then
-            declare
-               Identifier : constant String :=
-                 Tokens (2) (1 .. Token_Lengths (2));
-               Origin : constant String :=
-                 Tokens (3) (1 .. Token_Lengths (3));
-               Destination : constant String :=
-                 Tokens (4) (1 .. Token_Lengths (4));
-            begin
-               Execute_Add_Flight_Test (Identifier, Origin, Destination);
-            end;
+         elsif Command = "ADD_FLIGHT" and Token_Count = 4 then
+            Execute_Add_Flight_Test
+              (Tokens (2) (1 .. Token_Lengths (2)),
+               Tokens (3) (1 .. Token_Lengths (3)),
+               Tokens (4) (1 .. Token_Lengths (4)));
 
-         elsif Command = "DELETE_AIRPORT" and Token_Count >= 2 then
+         elsif Command = "DELETE_AIRPORT" and Token_Count = 2 then
             Execute_Delete_Test ("AIRPORT",
                                  Tokens (2) (1 .. Token_Lengths (2)));
 
-         elsif Command = "DELETE_CONTROLLER" and Token_Count >= 2 then
+         elsif Command = "DELETE_CONTROLLER" and Token_Count = 2 then
             Execute_Delete_Test ("CONTROLLER",
                                  Tokens (2) (1 .. Token_Lengths (2)));
 
-         elsif Command = "DELETE_FLIGHT" and Token_Count >= 2 then
+         elsif Command = "DELETE_FLIGHT" and Token_Count = 2 then
             Execute_Delete_Test ("FLIGHT",
                                  Tokens (2) (1 .. Token_Lengths (2)));
 
-         elsif Command = "VERIFY_AIRPORT_COUNT" and Token_Count >= 2 then
-            declare
-               Expected : constant Natural :=
-                 Natural'Value (Tokens (2) (1 .. Token_Lengths (2)));
-            begin
-               Execute_Verify_Count_Test ("AIRPORT", Expected);
-            end;
+         elsif Command = "VERIFY_AIRPORT_COUNT" and Token_Count = 2 then
+            Execute_Verify_Count_Test
+              ("AIRPORT", 
+               Natural'Value (Tokens (2) (1 .. Token_Lengths (2))));
 
-         elsif Command = "VERIFY_CONTROLLER_COUNT" and 
-               Token_Count >= 2 then
-            declare
-               Expected : constant Natural :=
-                 Natural'Value (Tokens (2) (1 .. Token_Lengths (2)));
-            begin
-               Execute_Verify_Count_Test ("CONTROLLER", Expected);
-            end;
+         elsif Command = "VERIFY_CONTROLLER_COUNT" and Token_Count = 2 then
+            Execute_Verify_Count_Test
+              ("CONTROLLER", 
+               Natural'Value (Tokens (2) (1 .. Token_Lengths (2))));
 
-         elsif Command = "VERIFY_FLIGHT_COUNT" and Token_Count >= 2 then
-            declare
-               Expected : constant Natural :=
-                 Natural'Value (Tokens (2) (1 .. Token_Lengths (2)));
-            begin
-               Execute_Verify_Count_Test ("FLIGHT", Expected);
-            end;
+         elsif Command = "VERIFY_FLIGHT_COUNT" and Token_Count = 2 then
+            Execute_Verify_Count_Test
+              ("FLIGHT", 
+               Natural'Value (Tokens (2) (1 .. Token_Lengths (2))));
 
          else
             Log_Test_Result (False, "Unknown command '" & Command &
-                           "' with " & Token_Count'Image & " args");
+                           "' or wrong arg count (got" & 
+                           Token_Count'Image & ")");
          end if;
       end;
 
       return True;
    exception
       when others =>
-         Log_Test_Result (False, "Error parsing line: " &
+         Log_Test_Result (False, "Parse error on line: " &
                           Line (Line'First .. Line'First + Length - 1));
          return False;
    end Parse_Test_Line;
