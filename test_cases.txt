@@ -1,4 +1,5 @@
-# Sample test cases for Flight Management System
+# Flight Management System Test Cases
+# Format: COMMAND argument1 argument2 argument3
 
 ADD_AIRPORT JFK_International New_York 300
 ADD_AIRPORT Heathrow London 250
@@ -9,10 +10,16 @@ ADD_FLIGHT FL200 Heathrow JFK_International
 VERIFY_AIRPORT_COUNT 2
 VERIFY_CONTROLLER_COUNT 2
 VERIFY_FLIGHT_COUNT 2
-ADD_AIRPORT JFK_International New_York 300  # duplicate
+
+# Test duplicate detection (should fail)
+ADD_AIRPORT JFK_International New_York 300
+
+# Test deletions
 DELETE_AIRPORT JFK_International
 DELETE_CONTROLLER CT001
 DELETE_FLIGHT FL100
+
+# Verify final counts
 VERIFY_AIRPORT_COUNT 1
 VERIFY_CONTROLLER_COUNT 1
 VERIFY_FLIGHT_COUNT 1
