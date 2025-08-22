@@ -127,7 +127,7 @@ package body Test_Runner is
 
       --  Skip leading spaces
       while Index <= Line'First + Effective_Length - 1 and then
-            (Line (Index) = ' ' or Line (Index) = ASCII.HT) loop
+            (Line (Index) = ' ' or else Line (Index) = ASCII.HT) loop
          Index := Index + 1;
       end loop;
 
@@ -137,7 +137,7 @@ package body Test_Runner is
 
          --  Find end of current token
          while Index <= Line'First + Effective_Length - 1 and then
-               Line (Index) /= ' ' and Line (Index) /= ASCII.HT loop
+               (Line (Index) /= ' ' and Line (Index) /= ASCII.HT) loop
             Index := Index + 1;
          end loop;
 
@@ -152,7 +152,7 @@ package body Test_Runner is
 
          --  Skip spaces before next token
          while Index <= Line'First + Effective_Length - 1 and then
-               (Line (Index) = ' ' or Line (Index) = ASCII.HT) loop
+               (Line (Index) = ' ' or else Line (Index) = ASCII.HT) loop
             Index := Index + 1;
          end loop;
       end loop;
@@ -167,8 +167,10 @@ package body Test_Runner is
       begin
          if Command = "ADD_AIRPORT" and Token_Count >= 4 then
             declare
-               Name : constant String := Tokens (2) (1 .. Token_Lengths (2));
-               Location : constant String := Tokens (3) (1 .. Token_Lengths (3));
+               Name : constant String :=
+                 Tokens (2) (1 .. Token_Lengths (2));
+               Location : constant String :=
+                 Tokens (3) (1 .. Token_Lengths (3));
                Capacity : constant Positive :=
                  Positive'Value (Tokens (4) (1 .. Token_Lengths (4)));
             begin
@@ -177,8 +179,10 @@ package body Test_Runner is
 
          elsif Command = "ADD_CONTROLLER" and Token_Count >= 4 then
             declare
-               License : constant String := Tokens (2) (1 .. Token_Lengths (2));
-               Name : constant String := Tokens (3) (1 .. Token_Lengths (3));
+               License : constant String :=
+                 Tokens (2) (1 .. Token_Lengths (2));
+               Name : constant String :=
+                 Tokens (3) (1 .. Token_Lengths (3));
                Experience : constant Natural :=
                  Natural'Value (Tokens (4) (1 .. Token_Lengths (4)));
             begin
@@ -187,21 +191,27 @@ package body Test_Runner is
 
          elsif Command = "ADD_FLIGHT" and Token_Count >= 4 then
             declare
-               Identifier : constant String := Tokens (2) (1 .. Token_Lengths (2));
-               Origin : constant String := Tokens (3) (1 .. Token_Lengths (3));
-               Destination : constant String := Tokens (4) (1 .. Token_Lengths (4));
+               Identifier : constant String :=
+                 Tokens (2) (1 .. Token_Lengths (2));
+               Origin : constant String :=
+                 Tokens (3) (1 .. Token_Lengths (3));
+               Destination : constant String :=
+                 Tokens (4) (1 .. Token_Lengths (4));
             begin
                Execute_Add_Flight_Test (Identifier, Origin, Destination);
             end;
 
          elsif Command = "DELETE_AIRPORT" and Token_Count >= 2 then
-            Execute_Delete_Test ("AIRPORT", Tokens (2) (1 .. Token_Lengths (2)));
+            Execute_Delete_Test ("AIRPORT",
+                                 Tokens (2) (1 .. Token_Lengths (2)));
 
          elsif Command = "DELETE_CONTROLLER" and Token_Count >= 2 then
-            Execute_Delete_Test ("CONTROLLER", Tokens (2) (1 .. Token_Lengths (2)));
+            Execute_Delete_Test ("CONTROLLER",
+                                 Tokens (2) (1 .. Token_Lengths (2)));
 
          elsif Command = "DELETE_FLIGHT" and Token_Count >= 2 then
-            Execute_Delete_Test ("FLIGHT", Tokens (2) (1 .. Token_Lengths (2)));
+            Execute_Delete_Test ("FLIGHT",
+                                 Tokens (2) (1 .. Token_Lengths (2)));
 
          elsif Command = "VERIFY_AIRPORT_COUNT" and Token_Count >= 2 then
             declare
@@ -211,7 +221,8 @@ package body Test_Runner is
                Execute_Verify_Count_Test ("AIRPORT", Expected);
             end;
 
-         elsif Command = "VERIFY_CONTROLLER_COUNT" and Token_Count >= 2 then
+         elsif Command = "VERIFY_CONTROLLER_COUNT" and 
+               Token_Count >= 2 then
             declare
                Expected : constant Natural :=
                  Natural'Value (Tokens (2) (1 .. Token_Lengths (2)));
