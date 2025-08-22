@@ -9,7 +9,7 @@ package body Test_Runner is
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
 
-   procedure Log_Test_Result 
+   procedure Log_Test_Result
      (Success : Boolean; Message : String) is
    begin
       Test_Count := Test_Count + 1;
@@ -57,7 +57,7 @@ package body Test_Runner is
          Log_Test_Result (False, "Error adding flight " & Identifier);
    end Execute_Add_Flight_Test;
 
-   procedure Execute_Delete_Test 
+   procedure Execute_Delete_Test
      (Entity_Type, Identifier : String) is
    begin
       if Entity_Type = "AIRPORT" then
@@ -74,10 +74,10 @@ package body Test_Runner is
       end if;
    exception
       when Record_Not_Found =>
-         Log_Test_Result (False, Entity_Type & " not found: " 
+         Log_Test_Result (False, Entity_Type & " not found: "
                           & Identifier);
       when others =>
-         Log_Test_Result (False, "Error deleting " & Entity_Type 
+         Log_Test_Result (False, "Error deleting " & Entity_Type
                           & ": " & Identifier);
    end Execute_Delete_Test;
 
@@ -92,7 +92,7 @@ package body Test_Runner is
       elsif Entity_Type = "FLIGHT" then
          Actual_Count := Natural (List_Flights.Length);
       else
-         Log_Test_Result (False, "Unknown entity type for count: " 
+         Log_Test_Result (False, "Unknown entity type for count: "
                           & Entity_Type);
          return;
       end if;
@@ -107,7 +107,7 @@ package body Test_Runner is
       end if;
    end Execute_Verify_Count_Test;
 
-   function Parse_Test_Line 
+   function Parse_Test_Line
      (Line : String; Length : Natural) return Boolean is
       Space1, Space2, Space3 : Natural := 0;
       Command : String (1 .. 50);
@@ -116,7 +116,7 @@ package body Test_Runner is
       Arg3 : String (1 .. 50);
       Command_Length : Natural := 0;
       Arg1_Length : Natural := 0;
-      Arg2_Length : Natural := 0;  
+      Arg2_Length : Natural := 0;
       Arg3_Length : Natural := 0;
    begin
       --  Find space positions
@@ -136,35 +136,35 @@ package body Test_Runner is
       --  Extract command
       if Space1 > 0 then
          Command_Length := Space1 - 1;
-         Command (1 .. Command_Length) := 
+         Command (1 .. Command_Length) :=
            Line (Line'First .. Line'First + Space1 - 2);
       else
          Command_Length := Length;
-         Command (1 .. Command_Length) := 
+         Command (1 .. Command_Length) :=
            Line (Line'First .. Line'First + Length - 1);
       end if;
 
       --  Extract arguments
       if Space2 > 0 then
          Arg1_Length := Space2 - Space1 - 1;
-         Arg1 (1 .. Arg1_Length) := 
+         Arg1 (1 .. Arg1_Length) :=
            Line (Line'First + Space1 .. Line'First + Space2 - 2);
       elsif Space1 > 0 then
          Arg1_Length := Length - Space1;
-         Arg1 (1 .. Arg1_Length) := 
+         Arg1 (1 .. Arg1_Length) :=
            Line (Line'First + Space1 .. Line'First + Length - 1);
       end if;
 
       if Space3 > 0 then
          Arg2_Length := Space3 - Space2 - 1;
-         Arg2 (1 .. Arg2_Length) := 
+         Arg2 (1 .. Arg2_Length) :=
            Line (Line'First + Space2 .. Line'First + Space3 - 2);
          Arg3_Length := Length - Space3;
-         Arg3 (1 .. Arg3_Length) := 
+         Arg3 (1 .. Arg3_Length) :=
            Line (Line'First + Space3 .. Line'First + Length - 1);
       elsif Space2 > 0 then
          Arg2_Length := Length - Space2;
-         Arg2 (1 .. Arg2_Length) := 
+         Arg2 (1 .. Arg2_Length) :=
            Line (Line'First + Space2 .. Line'First + Length - 1);
       end if;
 
@@ -174,7 +174,7 @@ package body Test_Runner is
       begin
          if Test_Command = "ADD_AIRPORT" then
             declare
-               Capacity : constant Positive := 
+               Capacity : constant Positive :=
                  Positive'Value (Arg3 (1 .. Arg3_Length));
             begin
                Execute_Add_Airport_Test (Arg1 (1 .. Arg1_Length),
@@ -184,7 +184,7 @@ package body Test_Runner is
 
          elsif Test_Command = "ADD_CONTROLLER" then
             declare
-               Experience : constant Natural := 
+               Experience : constant Natural :=
                  Natural'Value (Arg3 (1 .. Arg3_Length));
             begin
                Execute_Add_Controller_Test (Arg1 (1 .. Arg1_Length),
@@ -208,7 +208,7 @@ package body Test_Runner is
 
          elsif Test_Command = "VERIFY_AIRPORT_COUNT" then
             declare
-               Expected : constant Natural := 
+               Expected : constant Natural :=
                  Natural'Value (Arg1 (1 .. Arg1_Length));
             begin
                Execute_Verify_Count_Test ("AIRPORT", Expected);
@@ -216,7 +216,7 @@ package body Test_Runner is
 
          elsif Test_Command = "VERIFY_CONTROLLER_COUNT" then
             declare
-               Expected : constant Natural := 
+               Expected : constant Natural :=
                  Natural'Value (Arg1 (1 .. Arg1_Length));
             begin
                Execute_Verify_Count_Test ("CONTROLLER", Expected);
@@ -224,7 +224,7 @@ package body Test_Runner is
 
          elsif Test_Command = "VERIFY_FLIGHT_COUNT" then
             declare
-               Expected : constant Natural := 
+               Expected : constant Natural :=
                  Natural'Value (Arg1 (1 .. Arg1_Length));
             begin
                Execute_Verify_Count_Test ("FLIGHT", Expected);
@@ -238,12 +238,12 @@ package body Test_Runner is
       return True;
    exception
       when others =>
-         Log_Test_Result (False, "Error parsing test line: " & 
+         Log_Test_Result (False, "Error parsing test line: " &
                           Line (Line'First .. Line'First + Length - 1));
          return False;
    end Parse_Test_Line;
 
-   procedure Show_Test_Results 
+   procedure Show_Test_Results
      (Total_Tests, Passed_Tests : Natural) is
    begin
       Ada.Text_IO.Put_Line ("");
@@ -251,7 +251,7 @@ package body Test_Runner is
       Ada.Text_IO.Put_Line ("📊 TEST RESULTS SUMMARY:");
       Ada.Text_IO.Put_Line ("Total Tests: " & Natural'Image (Total_Tests));
       Ada.Text_IO.Put_Line ("Passed: " & Natural'Image (Passed_Tests));
-      Ada.Text_IO.Put_Line ("Failed: " & 
+      Ada.Text_IO.Put_Line ("Failed: " &
                             Natural'Image (Total_Tests - Passed_Tests));
 
       if Passed_Tests = Total_Tests then
@@ -277,7 +277,7 @@ package body Test_Runner is
       --  Check if test file exists
       if not Ada.Directories.Exists ("test_cases.txt") then
          Ada.Text_IO.Put_Line ("❌ Test file 'test_cases.txt' not found!");
-         Ada.Text_IO.Put_Line 
+         Ada.Text_IO.Put_Line
            ("Please create the test file in project root.");
          return;
       end if;
