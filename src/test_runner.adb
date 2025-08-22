@@ -1,6 +1,7 @@
 pragma Ada_2012;
 with Ada.Text_IO;
 with Ada.Directories;
+with Ada.Strings.Fixed;
 with Database_Operations; use Database_Operations;
 
 package body Test_Runner is
@@ -74,11 +75,9 @@ package body Test_Runner is
       end if;
    exception
       when Record_Not_Found =>
-         Log_Test_Result (False, Entity_Type & " not found: "
-                          & Identifier);
+         Log_Test_Result (False, Entity_Type & " not found: " & Identifier);
       when others =>
-         Log_Test_Result (False, "Error deleting " & Entity_Type
-                          & ": " & Identifier);
+         Log_Test_Result (False, "Error deleting " & Entity_Type & ": " & Identifier);
    end Execute_Delete_Test;
 
    procedure Execute_Verify_Count_Test
@@ -92,8 +91,7 @@ package body Test_Runner is
       elsif Entity_Type = "FLIGHT" then
          Actual_Count := Natural (List_Flights.Length);
       else
-         Log_Test_Result (False, "Unknown entity type for count: "
-                          & Entity_Type);
+         Log_Test_Result (False, "Unknown entity type for count: " & Entity_Type);
          return;
       end if;
 
@@ -102,122 +100,154 @@ package body Test_Runner is
                         Expected_Count'Image & ")");
       else
          Log_Test_Result (False, Entity_Type & " count - expected " &
-                        Expected_Count'Image & ", got " &
-                        Actual_Count'Image);
+                        Expected_Count'Image & ", got " & Actual_Count'Image);
       end if;
    end Execute_Verify_Count_Test;
 
    function Parse_Test_Line
      (Line : String; Length : Natural) return Boolean is
-      Tokens : array (1 .. 10) of String (1 .. 50);
-      Token_Lengths : array (1 .. 10) of Natural := (others => 0);
-      Token_Count : Natural := 0;
-      I : Natural := 1;
-      Start_Pos : Natural;
+      
+      function Get_Token (Text : String; Token_Num : Positive) return String is
+         Current_Token : Natural := 1;
+         Start_Pos : Natural := 1;
+         End_Pos : Natural;
+      begin
+         --  Skip leading spaces
+         while Start_Pos <= Text'Length and then 
+               (Text (Start_Pos) = ' ' or Text (Start_Pos) = ASCII.HT) loop
+            Start_Pos := Start_Pos + 1;
+         end loop;
+
+         --  Find tokens
+         while Current_Token <= Token_Num and Start_Pos <= Text'Length loop
+            End_Pos := Start_Pos;
+            
+            --  Find end of current token
+            while End_Pos <= Text'Length and then
+                  Text (End_Pos) /= ' ' and Text (End_Pos) /= ASCII.HT loop
+               End_Pos := End_Pos + 1;
+            end loop;
+
+            if Current_Token = Token_Num then
+               return Text (Start_Pos .. End_Pos - 1);
+            end if;
+
+            Current_Token := Current_Token + 1;
+            Start_Pos := End_Pos + 1;
+
+            --  Skip spaces between tokens
+            while Start_Pos <= Text'Length and then 
+                  (Text (Start_Pos) = ' ' or Text (Start_Pos) = ASCII.HT) loop
+               Start_Pos := Start_Pos + 1;
+            end loop;
+         end loop;
+
+         return ""; --  Token not found
+      end Get_Token;
+
+      function Count_Tokens (Text : String) return Natural is
+         Count : Natural := 0;
+         In_Token : Boolean := False;
+      begin
+         for I in Text'Range loop
+            if Text (I) /= ' ' and Text (I) /= ASCII.HT then
+               if not In_Token then
+                  Count := Count + 1;
+                  In_Token := True;
+               end if;
+            else
+               In_Token := False;
+            end if;
+         end loop;
+         return Count;
+      end Count_Tokens;
+
       Clean_Line : String (1 .. Length);
       Clean_Length : Natural := 0;
+      Command : String (1 .. 50);
+      Command_Length : Natural;
+      Token_Count : Natural;
 
    begin
-      --  First, clean the line by removing comments
-      for J in 1 .. Length loop
-         if Line (Line'First + J - 1) = '#' then
-            exit;
-         end if;
-         Clean_Line (J) := Line (Line'First + J - 1);
-         Clean_Length := J;
-      end loop;
-
-      --  Skip leading spaces
-      while I <= Clean_Length and then
-            (Clean_Line (I) = ' ' or Clean_Line (I) = ASCII.HT) loop
-         I := I + 1;
-      end loop;
-
-      --  Extract tokens
-      while I <= Clean_Length loop
-         Start_Pos := I;
-
-         --  Find end of current token (non-space character)
-         while I <= Clean_Length and then
-               Clean_Line (I) /= ' ' and Clean_Line (I) /= ASCII.HT loop
-            I := I + 1;
-         end loop;
-
-         --  Store the token
-         if I > Start_Pos then
-            Token_Count := Token_Count + 1;
-            Token_Lengths (Token_Count) := I - Start_Pos;
-            Tokens (Token_Count) := (others => ' ');
-            Tokens (Token_Count) (1 .. Token_Lengths (Token_Count)) :=
-              Clean_Line (Start_Pos .. I - 1);
-         end if;
-
-         --  Skip spaces
-         while I <= Clean_Length and then
-               (Clean_Line (I) = ' ' or Clean_Line (I) = ASCII.HT) loop
-            I := I + 1;
-         end loop;
+      --  Remove comments
+      for I in 1 .. Length loop
+         exit when Line (Line'First + I - 1) = '#';
+         Clean_Line (I) := Line (Line'First + I - 1);
+         Clean_Length := I;
       end loop;
 
       --  Skip empty lines
-      if Token_Count = 0 then
+      if Clean_Length = 0 then
          return True;
       end if;
 
-      --  Process commands
       declare
-         Command : constant String := Tokens (1) (1 .. Token_Lengths (1));
+         Working_Line : String := Clean_Line (1 .. Clean_Length);
       begin
-         if Command = "ADD_AIRPORT" and Token_Count = 4 then
-            Execute_Add_Airport_Test
-              (Tokens (2) (1 .. Token_Lengths (2)),
-               Tokens (3) (1 .. Token_Lengths (3)),
-               Positive'Value (Tokens (4) (1 .. Token_Lengths (4))));
-
-         elsif Command = "ADD_CONTROLLER" and Token_Count = 4 then
-            Execute_Add_Controller_Test
-              (Tokens (2) (1 .. Token_Lengths (2)),
-               Tokens (3) (1 .. Token_Lengths (3)),
-               Natural'Value (Tokens (4) (1 .. Token_Lengths (4))));
-
-         elsif Command = "ADD_FLIGHT" and Token_Count = 4 then
-            Execute_Add_Flight_Test
-              (Tokens (2) (1 .. Token_Lengths (2)),
-               Tokens (3) (1 .. Token_Lengths (3)),
-               Tokens (4) (1 .. Token_Lengths (4)));
-
-         elsif Command = "DELETE_AIRPORT" and Token_Count = 2 then
-            Execute_Delete_Test ("AIRPORT",
-                                 Tokens (2) (1 .. Token_Lengths (2)));
-
-         elsif Command = "DELETE_CONTROLLER" and Token_Count = 2 then
-            Execute_Delete_Test ("CONTROLLER",
-                                 Tokens (2) (1 .. Token_Lengths (2)));
-
-         elsif Command = "DELETE_FLIGHT" and Token_Count = 2 then
-            Execute_Delete_Test ("FLIGHT",
-                                 Tokens (2) (1 .. Token_Lengths (2)));
-
-         elsif Command = "VERIFY_AIRPORT_COUNT" and Token_Count = 2 then
-            Execute_Verify_Count_Test
-              ("AIRPORT", 
-               Natural'Value (Tokens (2) (1 .. Token_Lengths (2))));
-
-         elsif Command = "VERIFY_CONTROLLER_COUNT" and Token_Count = 2 then
-            Execute_Verify_Count_Test
-              ("CONTROLLER", 
-               Natural'Value (Tokens (2) (1 .. Token_Lengths (2))));
-
-         elsif Command = "VERIFY_FLIGHT_COUNT" and Token_Count = 2 then
-            Execute_Verify_Count_Test
-              ("FLIGHT", 
-               Natural'Value (Tokens (2) (1 .. Token_Lengths (2))));
-
-         else
-            Log_Test_Result (False, "Unknown command '" & Command &
-                           "' or wrong arg count (got" & 
-                           Token_Count'Image & ")");
+         Token_Count := Count_Tokens (Working_Line);
+         
+         if Token_Count = 0 then
+            return True;
          end if;
+
+         declare
+            Cmd : String := Get_Token (Working_Line, 1);
+         begin
+            Command_Length := Cmd'Length;
+            Command (1 .. Command_Length) := Cmd;
+         end;
+
+         --  Process commands
+         declare
+            Full_Command : String := Command (1 .. Command_Length);
+         begin
+            Ada.Text_IO.Put_Line ("DEBUG: Command='" & Full_Command & 
+                                  "' Tokens=" & Token_Count'Image);
+
+            if Full_Command = "ADD_AIRPORT" and Token_Count = 4 then
+               Execute_Add_Airport_Test
+                 (Get_Token (Working_Line, 2),
+                  Get_Token (Working_Line, 3),
+                  Positive'Value (Get_Token (Working_Line, 4)));
+
+            elsif Full_Command = "ADD_CONTROLLER" and Token_Count = 4 then
+               Execute_Add_Controller_Test
+                 (Get_Token (Working_Line, 2),
+                  Get_Token (Working_Line, 3),
+                  Natural'Value (Get_Token (Working_Line, 4)));
+
+            elsif Full_Command = "ADD_FLIGHT" and Token_Count = 4 then
+               Execute_Add_Flight_Test
+                 (Get_Token (Working_Line, 2),
+                  Get_Token (Working_Line, 3),
+                  Get_Token (Working_Line, 4));
+
+            elsif Full_Command = "DELETE_AIRPORT" and Token_Count = 2 then
+               Execute_Delete_Test ("AIRPORT", Get_Token (Working_Line, 2));
+
+            elsif Full_Command = "DELETE_CONTROLLER" and Token_Count = 2 then
+               Execute_Delete_Test ("CONTROLLER", Get_Token (Working_Line, 2));
+
+            elsif Full_Command = "DELETE_FLIGHT" and Token_Count = 2 then
+               Execute_Delete_Test ("FLIGHT", Get_Token (Working_Line, 2));
+
+            elsif Full_Command = "VERIFY_AIRPORT_COUNT" and Token_Count = 2 then
+               Execute_Verify_Count_Test 
+                 ("AIRPORT", Natural'Value (Get_Token (Working_Line, 2)));
+
+            elsif Full_Command = "VERIFY_CONTROLLER_COUNT" and Token_Count = 2 then
+               Execute_Verify_Count_Test 
+                 ("CONTROLLER", Natural'Value (Get_Token (Working_Line, 2)));
+
+            elsif Full_Command = "VERIFY_FLIGHT_COUNT" and Token_Count = 2 then
+               Execute_Verify_Count_Test 
+                 ("FLIGHT", Natural'Value (Get_Token (Working_Line, 2)));
+
+            else
+               Log_Test_Result (False, "Unknown command '" & Full_Command & 
+                               "' or wrong token count (" & Token_Count'Image & ")");
+            end if;
+         end;
       end;
 
       return True;
@@ -236,8 +266,7 @@ package body Test_Runner is
       Ada.Text_IO.Put_Line ("📊 TEST RESULTS SUMMARY:");
       Ada.Text_IO.Put_Line ("Total Tests: " & Natural'Image (Total_Tests));
       Ada.Text_IO.Put_Line ("Passed: " & Natural'Image (Passed_Tests));
-      Ada.Text_IO.Put_Line ("Failed: " &
-                            Natural'Image (Total_Tests - Passed_Tests));
+      Ada.Text_IO.Put_Line ("Failed: " & Natural'Image (Total_Tests - Passed_Tests));
 
       if Passed_Tests = Total_Tests then
          Ada.Text_IO.Put_Line ("🎉 ALL TESTS PASSED!");
@@ -255,28 +284,20 @@ package body Test_Runner is
       Ada.Text_IO.Put_Line ("🧪 Running Test Cases from file...");
       Ada.Text_IO.Put_Line ("=====================================");
 
-      --  Reset counters
       Test_Count := 0;
       Pass_Count := 0;
 
-      --  Check if test file exists
       if not Ada.Directories.Exists ("test_cases.txt") then
          Ada.Text_IO.Put_Line ("❌ Test file 'test_cases.txt' not found!");
-         Ada.Text_IO.Put_Line
-           ("Please create the test file in project root.");
          return;
       end if;
 
-      --  Clear existing data before tests
       Clear_All_Data;
-
-      --  Read and execute test cases
       Ada.Text_IO.Open (Test_File, Ada.Text_IO.In_File, "test_cases.txt");
 
       while not Ada.Text_IO.End_Of_File (Test_File) loop
          Ada.Text_IO.Get_Line (Test_File, Line, Line_Length);
 
-         --  Skip empty lines and comments
          if Line_Length > 0 and then Line (Line'First) /= '#' then
             declare
                Test_Success : Boolean;
@@ -288,11 +309,7 @@ package body Test_Runner is
       end loop;
 
       Ada.Text_IO.Close (Test_File);
-
-      --  Show results summary
       Show_Test_Results (Test_Count, Pass_Count);
-
-      --  Save test results
       Save_All_Data;
 
    exception
