@@ -1,25 +1,66 @@
 # Flight Management System Test Cases
-# Format: COMMAND argument1 argument2 argument3
+# Format: COMMAND argument1 argument2 argument3 [argument4]
+# Lines starting with # are comments and will be ignored
 
+# Test 1: Add airports
 ADD_AIRPORT JFK_International New_York 300
 ADD_AIRPORT Heathrow London 250
-ADD_CONTROLLER CT001 John_Smith 5
-ADD_CONTROLLER CT002 Jane_Doe 8
+ADD_AIRPORT CDG Paris 200
+ADD_AIRPORT Dubai_International Dubai 400
+
+# Test 2: Add controllers
+ADD_CONTROLLER CTL001 John_Smith 5
+ADD_CONTROLLER CTL002 Jane_Doe 8
+ADD_CONTROLLER CTL003 Mike_Johnson 12
+ADD_CONTROLLER CTL004 Sarah_Wilson 3
+
+# Test 3: Add flights
 ADD_FLIGHT FL100 JFK_International Heathrow
-ADD_FLIGHT FL200 Heathrow JFK_International
-VERIFY_AIRPORT_COUNT 2
-VERIFY_CONTROLLER_COUNT 2
-VERIFY_FLIGHT_COUNT 2
+ADD_FLIGHT FL200 Heathrow CDG
+ADD_FLIGHT FL300 CDG Dubai_International
+ADD_FLIGHT FL400 Dubai_International JFK_International
 
-# Test duplicate detection (should fail)
+# Test 4: Verify counts after additions
+VERIFY_AIRPORT_COUNT 4
+VERIFY_CONTROLLER_COUNT 4
+VERIFY_FLIGHT_COUNT 4
+
+# Test 5: Test duplicate detection (these should fail)
 ADD_AIRPORT JFK_International New_York 300
+ADD_CONTROLLER CTL001 John_Smith 5
+ADD_FLIGHT FL100 JFK_International Heathrow
 
-# Test deletions
-DELETE_AIRPORT JFK_International
-DELETE_CONTROLLER CT001
-DELETE_FLIGHT FL100
+# Test 6: Delete operations
+DELETE_AIRPORT CDG
+DELETE_CONTROLLER CTL004
+DELETE_FLIGHT FL300
 
-# Verify final counts
-VERIFY_AIRPORT_COUNT 1
-VERIFY_CONTROLLER_COUNT 1
-VERIFY_FLIGHT_COUNT 1
+# Test 7: Verify counts after deletions
+VERIFY_AIRPORT_COUNT 3
+VERIFY_CONTROLLER_COUNT 3
+VERIFY_FLIGHT_COUNT 3
+
+# Test 8: Add more test data
+ADD_AIRPORT LAX Los_Angeles 350
+ADD_CONTROLLER CTL005 Tom_Anderson 7
+ADD_FLIGHT FL500 LAX JFK_International
+
+# Test 9: Final verification
+VERIFY_AIRPORT_COUNT 4
+VERIFY_CONTROLLER_COUNT 4
+VERIFY_FLIGHT_COUNT 4
+
+# Test 10: Test edge cases - try to delete non-existent items
+DELETE_AIRPORT NonExistent_Airport
+DELETE_CONTROLLER NonExistent_Controller
+DELETE_FLIGHT NonExistent_Flight
+
+# Test 11: Clean up some data
+DELETE_FLIGHT FL500
+DELETE_AIRPORT LAX
+DELETE_CONTROLLER CTL005
+
+# Test 12: Final count check
+VERIFY_AIRPORT_COUNT 3
+VERIFY_CONTROLLER_COUNT 3
+VERIFY_FLIGHT_COUNT 3
