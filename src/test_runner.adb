@@ -1,4 +1,3 @@
---A
 pragma Ada_2012;
 with Ada.Text_IO;
 with Ada.Directories;
@@ -12,7 +11,7 @@ with Database_Operations; use Database_Operations;
 
 package body Test_Runner is
 
-   --  Define a vector to store string tokens
+   --  Define a vector to store clean string tokens
    package String_Vectors is new Ada.Containers.Vectors
      (Index_Type   => Natural,
       Element_Type => Unbounded_String);
@@ -21,18 +20,68 @@ package body Test_Runner is
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
 
-   --  Helper functions for trimmed numeric conversion
+   --  Enhanced trimmed conversion functions
    function Trimmed_Positive (Token : String) return Positive is
-      Trimmed_Token : constant String := Trim (Token, Both);
+      Clean_Token : String (1 .. Token'Length);
+      Clean_Index : Natural := 0;
    begin
-      return Positive'Value (Trimmed_Token);
+      -- Extract only digits, removing any invisible characters
+      for I in Token'Range loop
+         if Token (I) in '0' .. '9' then
+            Clean_Index := Clean_Index + 1;
+            Clean_Token (Clean_Index) := Token (I);
+         end if;
+      end loop;
+
+      if Clean_Index = 0 then
+         raise Constraint_Error with "No valid digits in token: " & Token;
+      end if;
+
+      return Positive'Value (Clean_Token (1 .. Clean_Index));
+   exception
+      when E : others =>
+         raise Constraint_Error with "Failed to convert '" & Token & 
+                                   "' to Positive: " & Ada.Exceptions.Exception_Message (E);
    end Trimmed_Positive;
 
    function Trimmed_Natural (Token : String) return Natural is
-      Trimmed_Token : constant String := Trim (Token, Both);
+      Clean_Token : String (1 .. Token'Length);
+      Clean_Index : Natural := 0;
    begin
-      return Natural'Value (Trimmed_Token);
+      -- Extract only digits, removing any invisible characters
+      for I in Token'Range loop
+         if Token (I) in '0' .. '9' then
+            Clean_Index := Clean_Index + 1;
+            Clean_Token (Clean_Index) := Token (I);
+         end if;
+      end loop;
+
+      if Clean_Index = 0 then
+         raise Constraint_Error with "No valid digits in token: " & Token;
+      end if;
+
+      return Natural'Value (Clean_Token (1 .. Clean_Index));
+   exception
+      when E : others =>
+         raise Constraint_Error with "Failed to convert '" & Token & 
+                                   "' to Natural: " & Ada.Exceptions.Exception_Message (E);
    end Trimmed_Natural;
+
+   function Clean_String_Token (Token : String) return String is
+      Result : String (1 .. Token'Length);
+      Result_Index : Natural := 0;
+   begin
+      -- Remove spaces, tabs, and control characters, keep alphanumeric and underscores
+      for I in Token'Range loop
+         if Token (I) in 'A' .. 'Z' or Token (I) in 'a' .. 'z' or 
+            Token (I) in '0' .. '9' or Token (I) = '_' then
+            Result_Index := Result_Index + 1;
+            Result (Result_Index) := Token (I);
+         end if;
+      end loop;
+      
+      return Result (1 .. Result_Index);
+   end Clean_String_Token;
 
    procedure Log_Test_Result
      (Success : Boolean; Message : String) is
@@ -137,18 +186,18 @@ package body Test_Runner is
       Current_Token : Unbounded_String;
       In_Token : Boolean := False;
    begin
-      -- Parse character by character
+      -- Parse character by character, handling multiple delimiters
       for I in Line'Range loop
          if Line (I) = ' ' or Line (I) = ',' or Line (I) = ASCII.HT then
             -- Found delimiter
             if In_Token then
-               -- End current token and trim it
+               -- End current token and clean it thoroughly
                declare
-                  Token_Str : constant String := To_String (Current_Token);
-                  Trimmed_Token : constant String := Trim (Token_Str, Both);
+                  Raw_Token : constant String := To_String (Current_Token);
+                  Clean_Token : constant String := Clean_String_Token (Raw_Token);
                begin
-                  if Trimmed_Token'Length > 0 then
-                     Result.Append (To_Unbounded_String (Trimmed_Token));
+                  if Clean_Token'Length > 0 then
+                     Result.Append (To_Unbounded_String (Clean_Token));
                   end if;
                end;
                Current_Token := Null_Unbounded_String;
@@ -158,11 +207,11 @@ package body Test_Runner is
             -- Comment found, stop parsing
             if In_Token then
                declare
-                  Token_Str : constant String := To_String (Current_Token);
-                  Trimmed_Token : constant String := Trim (Token_Str, Both);
+                  Raw_Token : constant String := To_String (Current_Token);
+                  Clean_Token : constant String := Clean_String_Token (Raw_Token);
                begin
-                  if Trimmed_Token'Length > 0 then
-                     Result.Append (To_Unbounded_String (Trimmed_Token));
+                  if Clean_Token'Length > 0 then
+                     Result.Append (To_Unbounded_String (Clean_Token));
                   end if;
                end;
             end if;
@@ -179,11 +228,11 @@ package body Test_Runner is
       -- Handle last token
       if In_Token then
          declare
-            Token_Str : constant String := To_String (Current_Token);
-            Trimmed_Token : constant String := Trim (Token_Str, Both);
+            Raw_Token : constant String := To_String (Current_Token);
+            Clean_Token : constant String := Clean_String_Token (Raw_Token);
          begin
-            if Trimmed_Token'Length > 0 then
-               Result.Append (To_Unbounded_String (Trimmed_Token));
+            if Clean_Token'Length > 0 then
+               Result.Append (To_Unbounded_String (Clean_Token));
             end if;
          end;
       end if;
@@ -201,9 +250,8 @@ package body Test_Runner is
 
       declare
          Command : constant String := To_String (Tokens.Element (0));
-         Arg_Count : constant Natural := Natural (Tokens.Length) - 1;
       begin
-         -- Process commands
+         -- Process commands with comprehensive error handling
          if Command = "ADD_AIRPORT" and Natural (Tokens.Length) = 4 then
             begin
                Execute_Add_Airport_Test
@@ -229,23 +277,27 @@ package body Test_Runner is
             end;
 
          elsif Command = "ADD_FLIGHT" and Natural (Tokens.Length) = 4 then
-            Execute_Add_Flight_Test
-              (To_String (Tokens.Element (1)),
-               To_String (Tokens.Element (2)),
-               To_String (Tokens.Element (3)));
+            begin
+               Execute_Add_Flight_Test
+                 (To_String (Tokens.Element (1)),
+                  To_String (Tokens.Element (2)),
+                  To_String (Tokens.Element (3)));
+            exception
+               when E : others =>
+                  Log_Test_Result (False, "ADD_FLIGHT error: " &
+                                  Ada.Exceptions.Exception_Message (E));
+            end;
 
          elsif Command = "DELETE_AIRPORT" and Natural (Tokens.Length) = 2 then
             Execute_Delete_Test ("AIRPORT", To_String (Tokens.Element (1)));
 
-         elsif Command = "DELETE_CONTROLLER" and 
-               Natural (Tokens.Length) = 2 then
+         elsif Command = "DELETE_CONTROLLER" and Natural (Tokens.Length) = 2 then
             Execute_Delete_Test ("CONTROLLER", To_String (Tokens.Element (1)));
 
          elsif Command = "DELETE_FLIGHT" and Natural (Tokens.Length) = 2 then
             Execute_Delete_Test ("FLIGHT", To_String (Tokens.Element (1)));
 
-         elsif Command = "VERIFY_AIRPORT_COUNT" and 
-               Natural (Tokens.Length) = 2 then
+         elsif Command = "VERIFY_AIRPORT_COUNT" and Natural (Tokens.Length) = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("AIRPORT", 
@@ -256,8 +308,7 @@ package body Test_Runner is
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "VERIFY_CONTROLLER_COUNT" and 
-               Natural (Tokens.Length) = 2 then
+         elsif Command = "VERIFY_CONTROLLER_COUNT" and Natural (Tokens.Length) = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("CONTROLLER", 
@@ -268,8 +319,7 @@ package body Test_Runner is
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "VERIFY_FLIGHT_COUNT" and 
-               Natural (Tokens.Length) = 2 then
+         elsif Command = "VERIFY_FLIGHT_COUNT" and Natural (Tokens.Length) = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("FLIGHT", 
@@ -282,7 +332,7 @@ package body Test_Runner is
 
          else
             Log_Test_Result (False, "Unknown command '" & Command & 
-                            "' or wrong arg count (expected vs got " & 
+                            "' or wrong arg count (got " & 
                             Natural (Tokens.Length)'Image & ")");
          end if;
       end;
