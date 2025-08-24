@@ -1,9 +1,13 @@
+--A
 pragma Ada_2012;
 with Ada.Text_IO;
 with Ada.Directories;
 with Ada.Exceptions;
 with Ada.Containers.Vectors;
+with Ada.Containers; use Ada.Containers;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Ada.Strings.Fixed; use Ada.Strings.Fixed;
+with Ada.Strings; use Ada.Strings;
 with Database_Operations; use Database_Operations;
 
 package body Test_Runner is
@@ -16,6 +20,19 @@ package body Test_Runner is
    --  Global test counters
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
+
+   --  Helper functions for trimmed numeric conversion
+   function Trimmed_Positive (Token : String) return Positive is
+      Trimmed_Token : constant String := Trim (Token, Both);
+   begin
+      return Positive'Value (Trimmed_Token);
+   end Trimmed_Positive;
+
+   function Trimmed_Natural (Token : String) return Natural is
+      Trimmed_Token : constant String := Trim (Token, Both);
+   begin
+      return Natural'Value (Trimmed_Token);
+   end Trimmed_Natural;
 
    procedure Log_Test_Result
      (Success : Boolean; Message : String) is
@@ -125,15 +142,29 @@ package body Test_Runner is
          if Line (I) = ' ' or Line (I) = ',' or Line (I) = ASCII.HT then
             -- Found delimiter
             if In_Token then
-               -- End current token
-               Result.Append (Current_Token);
+               -- End current token and trim it
+               declare
+                  Token_Str : constant String := To_String (Current_Token);
+                  Trimmed_Token : constant String := Trim (Token_Str, Both);
+               begin
+                  if Trimmed_Token'Length > 0 then
+                     Result.Append (To_Unbounded_String (Trimmed_Token));
+                  end if;
+               end;
                Current_Token := Null_Unbounded_String;
                In_Token := False;
             end if;
          elsif Line (I) = '#' then
             -- Comment found, stop parsing
             if In_Token then
-               Result.Append (Current_Token);
+               declare
+                  Token_Str : constant String := To_String (Current_Token);
+                  Trimmed_Token : constant String := Trim (Token_Str, Both);
+               begin
+                  if Trimmed_Token'Length > 0 then
+                     Result.Append (To_Unbounded_String (Trimmed_Token));
+                  end if;
+               end;
             end if;
             exit;
          else
@@ -147,7 +178,14 @@ package body Test_Runner is
 
       -- Handle last token
       if In_Token then
-         Result.Append (Current_Token);
+         declare
+            Token_Str : constant String := To_String (Current_Token);
+            Trimmed_Token : constant String := Trim (Token_Str, Both);
+         begin
+            if Trimmed_Token'Length > 0 then
+               Result.Append (To_Unbounded_String (Trimmed_Token));
+            end if;
+         end;
       end if;
 
       return Result;
@@ -163,85 +201,79 @@ package body Test_Runner is
 
       declare
          Command : constant String := To_String (Tokens.Element (0));
+         Arg_Count : constant Natural := Natural (Tokens.Length) - 1;
       begin
-         -- Debug output
-         Ada.Text_IO.Put ("DEBUG: Command='" & Command & "' Args=" & 
-                          Natural (Tokens.Length - 1)'Image & " [");
-         for I in 1 .. Tokens.Last_Index loop
-            Ada.Text_IO.Put ("'" & To_String (Tokens.Element (I)) & "'");
-            if I < Tokens.Last_Index then
-               Ada.Text_IO.Put (", ");
-            end if;
-         end loop;
-         Ada.Text_IO.Put_Line ("]");
-
          -- Process commands
-         if Command = "ADD_AIRPORT" and Tokens.Length = 4 then
+         if Command = "ADD_AIRPORT" and Natural (Tokens.Length) = 4 then
             begin
                Execute_Add_Airport_Test
                  (To_String (Tokens.Element (1)),
                   To_String (Tokens.Element (2)),
-                  Positive'Value (To_String (Tokens.Element (3))));
+                  Trimmed_Positive (To_String (Tokens.Element (3))));
             exception
                when E : others =>
                   Log_Test_Result (False, "ADD_AIRPORT error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "ADD_CONTROLLER" and Tokens.Length = 4 then
+         elsif Command = "ADD_CONTROLLER" and Natural (Tokens.Length) = 4 then
             begin
                Execute_Add_Controller_Test
                  (To_String (Tokens.Element (1)),
                   To_String (Tokens.Element (2)),
-                  Natural'Value (To_String (Tokens.Element (3))));
+                  Trimmed_Natural (To_String (Tokens.Element (3))));
             exception
                when E : others =>
                   Log_Test_Result (False, "ADD_CONTROLLER error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "ADD_FLIGHT" and Tokens.Length = 4 then
+         elsif Command = "ADD_FLIGHT" and Natural (Tokens.Length) = 4 then
             Execute_Add_Flight_Test
               (To_String (Tokens.Element (1)),
                To_String (Tokens.Element (2)),
                To_String (Tokens.Element (3)));
 
-         elsif Command = "DELETE_AIRPORT" and Tokens.Length = 2 then
+         elsif Command = "DELETE_AIRPORT" and Natural (Tokens.Length) = 2 then
             Execute_Delete_Test ("AIRPORT", To_String (Tokens.Element (1)));
 
-         elsif Command = "DELETE_CONTROLLER" and Tokens.Length = 2 then
+         elsif Command = "DELETE_CONTROLLER" and 
+               Natural (Tokens.Length) = 2 then
             Execute_Delete_Test ("CONTROLLER", To_String (Tokens.Element (1)));
 
-         elsif Command = "DELETE_FLIGHT" and Tokens.Length = 2 then
+         elsif Command = "DELETE_FLIGHT" and Natural (Tokens.Length) = 2 then
             Execute_Delete_Test ("FLIGHT", To_String (Tokens.Element (1)));
 
-         elsif Command = "VERIFY_AIRPORT_COUNT" and Tokens.Length = 2 then
+         elsif Command = "VERIFY_AIRPORT_COUNT" and 
+               Natural (Tokens.Length) = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("AIRPORT", 
-                  Natural'Value (To_String (Tokens.Element (1))));
+                  Trimmed_Natural (To_String (Tokens.Element (1))));
             exception
                when E : others =>
                   Log_Test_Result (False, "VERIFY_AIRPORT_COUNT error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "VERIFY_CONTROLLER_COUNT" and Tokens.Length = 2 then
+         elsif Command = "VERIFY_CONTROLLER_COUNT" and 
+               Natural (Tokens.Length) = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("CONTROLLER", 
-                  Natural'Value (To_String (Tokens.Element (1))));
+                  Trimmed_Natural (To_String (Tokens.Element (1))));
             exception
                when E : others =>
                   Log_Test_Result (False, "VERIFY_CONTROLLER_COUNT error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "VERIFY_FLIGHT_COUNT" and Tokens.Length = 2 then
+         elsif Command = "VERIFY_FLIGHT_COUNT" and 
+               Natural (Tokens.Length) = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("FLIGHT", 
-                  Natural'Value (To_String (Tokens.Element (1))));
+                  Trimmed_Natural (To_String (Tokens.Element (1))));
             exception
                when E : others =>
                   Log_Test_Result (False, "VERIFY_FLIGHT_COUNT error: " &
@@ -258,8 +290,10 @@ package body Test_Runner is
 
    function Parse_Test_Line
      (Line : String; Length : Natural) return Boolean is
-      Working_Line : constant String := Line (Line'First .. Line'First + Length - 1);
-      Tokens : constant String_Vectors.Vector := Split_Line_To_Vector (Working_Line);
+      Working_Line : constant String := 
+        Line (Line'First .. Line'First + Length - 1);
+      Tokens : constant String_Vectors.Vector := 
+        Split_Line_To_Vector (Working_Line);
    begin
       Process_Command_Vector (Tokens);
       return True;
