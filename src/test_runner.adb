@@ -2,9 +2,16 @@ pragma Ada_2012;
 with Ada.Text_IO;
 with Ada.Directories;
 with Ada.Exceptions;
+with Ada.Containers.Vectors;
+with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
 with Database_Operations; use Database_Operations;
 
 package body Test_Runner is
+
+   --  Define a vector to store string tokens
+   package String_Vectors is new Ada.Containers.Vectors
+     (Index_Type   => Natural,
+      Element_Type => Unbounded_String);
 
    --  Global test counters
    Test_Count : Natural := 0;
@@ -107,150 +114,134 @@ package body Test_Runner is
       end if;
    end Execute_Verify_Count_Test;
 
-   function Parse_Test_Line
-     (Line : String; Length : Natural) return Boolean is
-      
-      function Get_Token_CSV 
-        (Text : String; Token_Num : Positive) return String is
-         Tokens_Found : Natural := 0;
-         Start_Pos : Natural := Text'First;
-         End_Pos : Natural := Text'First;
-         I : Natural := Text'First;
-      begin
-         -- Find the requested token
-         while I <= Text'Last and Tokens_Found < Token_Num loop
-            Start_Pos := I;
-            
-            -- Find end of current token (until comma or end)
-            while I <= Text'Last and then Text (I) /= ',' loop
-               I := I + 1;
-            end loop;
-            
-            End_Pos := I - 1;
-            Tokens_Found := Tokens_Found + 1;
-            
-            if Tokens_Found = Token_Num then
-               return Text (Start_Pos .. End_Pos);
-            end if;
-            
-            -- Skip comma to next token
-            if I <= Text'Last and then Text (I) = ',' then
-               I := I + 1;
-            end if;
-         end loop;
-         
-         return ""; -- Token not found
-      end Get_Token_CSV;
-
-      function Count_Tokens_CSV (Text : String) return Natural is
-         Count : Natural := 1; -- At least one token if string is not empty
-      begin
-         if Text'Length = 0 then
-            return 0;
-         end if;
-         
-         for I in Text'Range loop
-            if Text (I) = ',' then
-               Count := Count + 1;
-            end if;
-         end loop;
-         
-         return Count;
-      end Count_Tokens_CSV;
-
-      Clean_Line : String (1 .. Length);
-      Clean_Length : Natural := 0;
-
+   function Split_Line_To_Vector 
+     (Line : String) return String_Vectors.Vector is
+      Result : String_Vectors.Vector;
+      Current_Token : Unbounded_String;
+      In_Token : Boolean := False;
    begin
-      -- Remove comments
-      for I in 1 .. Length loop
-         exit when Line (Line'First + I - 1) = '#';
-         Clean_Line (I) := Line (Line'First + I - 1);
-         Clean_Length := I;
+      -- Parse character by character
+      for I in Line'Range loop
+         if Line (I) = ' ' or Line (I) = ',' or Line (I) = ASCII.HT then
+            -- Found delimiter
+            if In_Token then
+               -- End current token
+               Result.Append (Current_Token);
+               Current_Token := Null_Unbounded_String;
+               In_Token := False;
+            end if;
+         elsif Line (I) = '#' then
+            -- Comment found, stop parsing
+            if In_Token then
+               Result.Append (Current_Token);
+            end if;
+            exit;
+         else
+            -- Regular character
+            if not In_Token then
+               In_Token := True;
+            end if;
+            Append (Current_Token, Line (I));
+         end if;
       end loop;
 
+      -- Handle last token
+      if In_Token then
+         Result.Append (Current_Token);
+      end if;
+
+      return Result;
+   end Split_Line_To_Vector;
+
+   procedure Process_Command_Vector 
+     (Tokens : String_Vectors.Vector) is
+   begin
       -- Skip empty lines
-      if Clean_Length = 0 then
-         return True;
+      if Tokens.Is_Empty then
+         return;
       end if;
 
       declare
-         Working_Text : constant String := Clean_Line (1 .. Clean_Length);
-         Token_Count : constant Natural := Count_Tokens_CSV (Working_Text);
-         Command : constant String := Get_Token_CSV (Working_Text, 1);
+         Command : constant String := To_String (Tokens.Element (0));
       begin
-         if Token_Count = 0 then
-            return True;
-         end if;
+         -- Debug output
+         Ada.Text_IO.Put ("DEBUG: Command='" & Command & "' Args=" & 
+                          Natural (Tokens.Length - 1)'Image & " [");
+         for I in 1 .. Tokens.Last_Index loop
+            Ada.Text_IO.Put ("'" & To_String (Tokens.Element (I)) & "'");
+            if I < Tokens.Last_Index then
+               Ada.Text_IO.Put (", ");
+            end if;
+         end loop;
+         Ada.Text_IO.Put_Line ("]");
 
-         -- Process commands with proper error handling
-         if Command = "ADD_AIRPORT" and Token_Count = 4 then
+         -- Process commands
+         if Command = "ADD_AIRPORT" and Tokens.Length = 4 then
             begin
                Execute_Add_Airport_Test
-                 (Get_Token_CSV (Working_Text, 2),
-                  Get_Token_CSV (Working_Text, 3),
-                  Positive'Value (Get_Token_CSV (Working_Text, 4)));
+                 (To_String (Tokens.Element (1)),
+                  To_String (Tokens.Element (2)),
+                  Positive'Value (To_String (Tokens.Element (3))));
             exception
                when E : others =>
                   Log_Test_Result (False, "ADD_AIRPORT error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "ADD_CONTROLLER" and Token_Count = 4 then
+         elsif Command = "ADD_CONTROLLER" and Tokens.Length = 4 then
             begin
                Execute_Add_Controller_Test
-                 (Get_Token_CSV (Working_Text, 2),
-                  Get_Token_CSV (Working_Text, 3),
-                  Natural'Value (Get_Token_CSV (Working_Text, 4)));
+                 (To_String (Tokens.Element (1)),
+                  To_String (Tokens.Element (2)),
+                  Natural'Value (To_String (Tokens.Element (3))));
             exception
                when E : others =>
                   Log_Test_Result (False, "ADD_CONTROLLER error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "ADD_FLIGHT" and Token_Count = 4 then
+         elsif Command = "ADD_FLIGHT" and Tokens.Length = 4 then
             Execute_Add_Flight_Test
-              (Get_Token_CSV (Working_Text, 2),
-               Get_Token_CSV (Working_Text, 3),
-               Get_Token_CSV (Working_Text, 4));
+              (To_String (Tokens.Element (1)),
+               To_String (Tokens.Element (2)),
+               To_String (Tokens.Element (3)));
 
-         elsif Command = "DELETE_AIRPORT" and Token_Count = 2 then
-            Execute_Delete_Test ("AIRPORT", Get_Token_CSV (Working_Text, 2));
+         elsif Command = "DELETE_AIRPORT" and Tokens.Length = 2 then
+            Execute_Delete_Test ("AIRPORT", To_String (Tokens.Element (1)));
 
-         elsif Command = "DELETE_CONTROLLER" and Token_Count = 2 then
-            Execute_Delete_Test ("CONTROLLER", 
-                                 Get_Token_CSV (Working_Text, 2));
+         elsif Command = "DELETE_CONTROLLER" and Tokens.Length = 2 then
+            Execute_Delete_Test ("CONTROLLER", To_String (Tokens.Element (1)));
 
-         elsif Command = "DELETE_FLIGHT" and Token_Count = 2 then
-            Execute_Delete_Test ("FLIGHT", Get_Token_CSV (Working_Text, 2));
+         elsif Command = "DELETE_FLIGHT" and Tokens.Length = 2 then
+            Execute_Delete_Test ("FLIGHT", To_String (Tokens.Element (1)));
 
-         elsif Command = "VERIFY_AIRPORT_COUNT" and Token_Count = 2 then
+         elsif Command = "VERIFY_AIRPORT_COUNT" and Tokens.Length = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("AIRPORT", 
-                  Natural'Value (Get_Token_CSV (Working_Text, 2)));
+                  Natural'Value (To_String (Tokens.Element (1))));
             exception
                when E : others =>
                   Log_Test_Result (False, "VERIFY_AIRPORT_COUNT error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "VERIFY_CONTROLLER_COUNT" and Token_Count = 2 then
+         elsif Command = "VERIFY_CONTROLLER_COUNT" and Tokens.Length = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("CONTROLLER", 
-                  Natural'Value (Get_Token_CSV (Working_Text, 2)));
+                  Natural'Value (To_String (Tokens.Element (1))));
             exception
                when E : others =>
                   Log_Test_Result (False, "VERIFY_CONTROLLER_COUNT error: " &
                                   Ada.Exceptions.Exception_Message (E));
             end;
 
-         elsif Command = "VERIFY_FLIGHT_COUNT" and Token_Count = 2 then
+         elsif Command = "VERIFY_FLIGHT_COUNT" and Tokens.Length = 2 then
             begin
                Execute_Verify_Count_Test 
                  ("FLIGHT", 
-                  Natural'Value (Get_Token_CSV (Working_Text, 2)));
+                  Natural'Value (To_String (Tokens.Element (1))));
             exception
                when E : others =>
                   Log_Test_Result (False, "VERIFY_FLIGHT_COUNT error: " &
@@ -259,11 +250,18 @@ package body Test_Runner is
 
          else
             Log_Test_Result (False, "Unknown command '" & Command & 
-                            "' or wrong arg count (got " & 
-                            Token_Count'Image & ")");
+                            "' or wrong arg count (expected vs got " & 
+                            Natural (Tokens.Length)'Image & ")");
          end if;
       end;
+   end Process_Command_Vector;
 
+   function Parse_Test_Line
+     (Line : String; Length : Natural) return Boolean is
+      Working_Line : constant String := Line (Line'First .. Line'First + Length - 1);
+      Tokens : constant String_Vectors.Vector := Split_Line_To_Vector (Working_Line);
+   begin
+      Process_Command_Vector (Tokens);
       return True;
    exception
       when E : others =>
@@ -315,7 +313,7 @@ package body Test_Runner is
       while not Ada.Text_IO.End_Of_File (Test_File) loop
          Ada.Text_IO.Get_Line (Test_File, Line, Line_Length);
 
-         if Line_Length > 0 and then Line (Line'First) /= '#' then
+         if Line_Length > 0 then
             declare
                Test_Success : Boolean;
                pragma Unreferenced (Test_Success);
